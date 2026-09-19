@@ -782,6 +782,31 @@
     font-weight:700;cursor:pointer;font-family:inherit;color:var(--ink-soft);transition:.12s}
   .tt.sel{background:var(--ink);color:var(--paper);border-color:var(--ink)}
   .tt:not(.sel):hover{border-color:var(--accent);color:var(--accent)}
+  .top-row.top-ok .top-txt{text-decoration:line-through;color:var(--ink-soft);font-weight:600}
+  .lnk-ind{font-size:11px;opacity:.7}
+  .ttxt{cursor:pointer}
+  .n-titrow{display:flex;gap:10px;align-items:center;margin:6px 0 12px}
+  .n-tit{flex:1;min-width:0;font-size:23px;font-weight:700;letter-spacing:-0.02em;border:none;background:transparent;
+    color:var(--ink);outline:none;font-family:var(--font);padding:4px 0}
+  .n-tit::placeholder{color:var(--ink-soft);opacity:.6}
+  .n-fold{width:180px;border:1px solid var(--line);background:var(--card);border-radius:999px;padding:6px 13px;
+    font-size:12.5px;font-weight:600;color:var(--ink);outline:none}
+  .n-fold:focus{border-color:var(--accent)}
+  .ctx-pop{position:fixed;z-index:99;background:var(--ink);color:var(--paper);border-radius:10px;padding:10px 15px;
+    font-size:13px;font-weight:600;cursor:pointer;box-shadow:0 8px 30px rgba(0,0,0,.3)}
+  .ctx-pop:hover{opacity:.92}
+  .toast-mini{position:fixed;bottom:26px;left:50%;transform:translate(-50%,10px);background:var(--ink);color:var(--paper);
+    padding:10px 18px;border-radius:999px;font-size:13px;font-weight:700;opacity:0;transition:.25s;z-index:99;pointer-events:none}
+  .toast-mini.on{opacity:1;transform:translate(-50%,0)}
+  .arc-nav{display:flex;align-items:center;justify-content:center;gap:16px;margin:14px 0 8px;font-size:14.5px}
+  .arc-nav .t-act{width:30px;height:30px;font-size:17px;opacity:.8;cursor:pointer;display:grid;place-items:center}
+  .arc-grid span{position:relative}
+  .arc-grid span .dot{position:absolute;left:50%;transform:translateX(-50%);bottom:1px;width:4px;height:4px;border-radius:99px;background:var(--accent)}
+  .arc-grid span:not(.has){opacity:.45;cursor:default}
+  .arc-grid span.has{font-weight:800}
+  .lang-tg{margin-left:auto;border:1px solid var(--line);background:var(--card);border-radius:999px;padding:5px 13px;
+    font-size:11.5px;font-weight:800;letter-spacing:.6px;cursor:pointer;color:var(--ink-soft);flex:0 0 auto}
+  .lang-tg:hover{border-color:var(--accent);color:var(--accent)}
   /* móvil: sin hover, las acciones deben verse siempre */
   @media(hover:none){ .t-row .t-act,.rt-row .t-act{opacity:.5} }
   @media(max-width:700px){
@@ -954,6 +979,7 @@
   <div class="brand">
     <div class="logo">VM</div>
     <h1>VM Planner</h1>
+    <button class="lang-tg" id="langTg">EN</button>
   </div>
   <p class="tagline">Elige lo importante, protege tu tiempo, produce.</p>
 
@@ -2549,17 +2575,158 @@ function confetti(){
 /* ---------- ✍️ Escribir (agenda personal) ---------- */
 const MESES_L=["enero","febrero","marzo","abril","mayo","junio","julio","agosto","septiembre","octubre","noviembre","diciembre"];
 function fmtDateLong(ds){ const d=new Date(ds+"T12:00:00"); return DIAS[d.getDay()]+" "+d.getDate()+" de "+MESES_L[d.getMonth()]; }
-let J_DATE=null, _jT=null;
-function renderJournal(ds){
+/* 🌐 idioma (ES por defecto; toggle arriba a la derecha) */
+const LANG=()=>localStorage.getItem("nitido-lang")||"es";
+const tr=(es,en)=>LANG()==="en"?en:es;
+/* 🗂 historial: toda tarea completada queda registrada con su fecha (buscable por siempre) */
+function archiveAdd(t){
+  if(typeof isRoutine==="function" && isRoutine(t)) return;
+  const A=loadStore("archive"); A.items=A.items||[];
+  const d=todayStr();
+  if(A.items.some(x=>x.d===d && x.txt===t.txt)) return;
+  A.items.push({txt:t.txt, d, cat:t.glistName||null});
+  if(A.items.length>3000) A.items=A.items.slice(-3000);
+  saveStore("archive",A);
+}
+function archiveRemove(txt){
+  const A=loadStore("archive"); A.items=(A.items||[]).filter(x=>!(x.d===todayStr() && x.txt===txt)); saveStore("archive",A);
+}
+function toastMini(msg){
+  const t=el("div","toast-mini",msg); document.body.appendChild(t);
+  setTimeout(()=>t.classList.add("on"),10);
+  setTimeout(()=>{ t.classList.remove("on"); setTimeout(()=>t.remove(),300); },1900);
+}
+/* 🔗 detalle de tarea: título editable + contexto con links clickeables (Gmail, WhatsApp, Docs…) */
+function openTaskDetail(t, save, after){
+  const links=()=> (String(t.ctx||"").match(/https?:\/\/[^\s<>"')\]]+/g))||[];
+  showPanel(tr("Detalle de tarea","Task details"), `
+    <input class="lib-search" id="tdTxt" value="${esc(t.txt)}" style="font-weight:700;font-size:15px">
+    <p class="q-sub" style="margin:12px 0 6px;font-size:12px">${tr("Contexto: pega links (Gmail, WhatsApp, Docs, Figma…) o apuntes — los links quedan clickeables.","Context: paste links (Gmail, WhatsApp, Docs…) or notes — links become clickable.")}</p>
+    <textarea id="tdCtx" class="lib-search" style="min-height:120px;resize:vertical;font-family:inherit;line-height:1.6">${esc(t.ctx||"")}</textarea>
+    <div id="tdLinks" style="display:flex;gap:6px;flex-wrap:wrap;margin-top:10px"></div>
+    <div class="rit-foot"><span></span>
+      <button class="lib-act" id="tdOk" style="background:var(--accent);color:#fff;border-color:var(--accent)">${tr("Listo","Done")}</button></div>`);
+  const paint=()=>{ $("#tdLinks").innerHTML=links().map(u=>
+    `<a class="lib-act" href="${esc(u)}" target="_blank" rel="noopener" style="text-decoration:none">🔗 ${esc(u.replace(/^https?:\/\/(www\.)?/,"").slice(0,36))}${u.length>44?"…":""}</a>`).join(""); };
+  paint();
+  $("#tdCtx").oninput=e=>{ t.ctx=e.target.value; save(); paint(); };
+  $("#tdTxt").onchange=e=>{ const nv=e.target.value.trim(); if(nv && nv!==t.txt){ t.txt=nv; save(); if(t.gid) gPush(t,{title:nv}); } };
+  $("#tdOk").onclick=()=>{ closePanel(); after(); };
+}
+/* 🗂 Historial: calendario de tareas hechas + buscador de antiguas */
+let ARCH_M=null;
+function openArchive(){
+  const A=(loadStore("archive").items)||[];
+  if(!ARCH_M){ const n=new Date(); ARCH_M={y:n.getFullYear(), m:n.getMonth(), sel:todayStr()}; }
+  const MESL=["Enero","Febrero","Marzo","Abril","Mayo","Junio","Julio","Agosto","Septiembre","Octubre","Noviembre","Diciembre"];
+  const MESE=["January","February","March","April","May","June","July","August","September","October","November","December"];
+  const byDay={}; A.forEach(x=>{ (byDay[x.d]=byDay[x.d]||[]).push(x); });
+  const first=new Date(ARCH_M.y, ARCH_M.m, 1);
+  const nDias=new Date(ARCH_M.y, ARCH_M.m+1, 0).getDate();
+  const off=(first.getDay()+6)%7;
+  let grid=["L","M","M","J","V","S","D"].map(d=>`<b>${d}</b>`).join("");
+  for(let i=0;i<off;i++) grid+="<i></i>";
+  for(let d=1; d<=nDias; d++){
+    const ds=ARCH_M.y+"-"+String(ARCH_M.m+1).padStart(2,"0")+"-"+String(d).padStart(2,"0");
+    const n=(byDay[ds]||[]).length;
+    grid+=`<span data-ds="${ds}" class="${ds===ARCH_M.sel?"sel":""}${n?" has":""}">${d}${n?`<i class="dot"></i>`:""}</span>`;
+  }
+  showPanel("🗂 "+tr("Historial","History"), `
+    <input class="lib-search" id="arQ" placeholder="${tr("Buscar cualquier tarea hecha…","Search any completed task…")}">
+    <div class="arc-nav"><span class="t-act" id="arPrev">‹</span>
+      <b>${(LANG()==="en"?MESE:MESL)[ARCH_M.m]} ${ARCH_M.y}</b>
+      <span class="t-act" id="arNext">›</span></div>
+    <div class="dp-grid arc-grid">${grid}</div>
+    <div id="arList" style="margin-top:14px"></div>`);
+  const list=(items,titulo)=>{
+    $("#arList").innerHTML = `<p class="j-past-title">${titulo} · ${items.length}</p>` +
+      (items.length? items.map(x=>`<div class="t-row" style="opacity:.85"><span style="color:var(--accent)">✓</span>
+        <span class="ttxt">${esc(x.txt)}</span>
+        ${x.cat?`<span class="cat-pill cp-todo" style="font-size:10.5px">${esc(x.cat)}</span>`:""}
+        <span class="q-sub" style="font-size:11.5px;flex:0 0 auto">${fmtDia(x.d)==="mañana"?x.d:esc(x.d)}</span></div>`).join("")
+      : `<div class="lib-empty">${tr("Nada ese día.","Nothing that day.")}</div>`);
+  };
+  const showDay=ds=>list((byDay[ds]||[]), (LANG()==="en"?"Done on ":"Hechas el ")+ds);
+  showDay(ARCH_M.sel);
+  $("#panelBody").querySelectorAll(".arc-grid [data-ds]").forEach(c=>c.onclick=()=>{ ARCH_M.sel=c.dataset.ds; openArchive(); });
+  $("#arPrev").onclick=()=>{ ARCH_M.m--; if(ARCH_M.m<0){ARCH_M.m=11;ARCH_M.y--;} openArchive(); };
+  $("#arNext").onclick=()=>{ ARCH_M.m++; if(ARCH_M.m>11){ARCH_M.m=0;ARCH_M.y++;} openArchive(); };
+  $("#arQ").oninput=e=>{
+    const q=e.target.value.trim().toLowerCase();
+    if(!q){ showDay(ARCH_M.sel); return; }
+    list(A.filter(x=>x.txt.toLowerCase().includes(q)).reverse().slice(0,60), tr("Resultados","Results"));
+  };
+}
+
+let _jT=null;
+function notesStore(){
+  const N=loadStore("notes"); N.list=N.list||[];
+  if(!N.mig){ // migración: el diario antiguo (una entrada por día) pasa a carpeta "Diario"
+    const J=loadStore("journal").e||{};
+    Object.keys(J).forEach(d=>{ if(J[d]&&String(J[d]).trim()) N.list.push({id:"j"+d, tit:fmtDateLong(d), fold:"Diario", d, html:J[d], up:d}); });
+    N.mig=1; saveStore("notes",N);
+  }
+  return N;
+}
+function renderJournal(){ // 📚 biblioteca de notas: carpetas + buscador
   VIEW="journal"; if(typeof dockComposer==="function") dockComposer();
-  J_DATE=ds||todayStr();
-  const J=loadStore("journal"); J.e=J.e||{};
+  const N=notesStore();
   const root=$("#canvas"); root.style.display="block"; root.className=""; root.innerHTML=""; CURRENT=null;
-  const isToday=J_DATE===todayStr();
   const head=el("div","j-head");
-  head.innerHTML=`<h2 class="j-date">✍️ ${fmtDateLong(J_DATE)}${isToday?"":" · <span style='font-size:14px;color:var(--ink-soft)'>entrada pasada</span>"}</h2>
-    ${isToday?"":'<button class="j-today" id="jToday">Ir a hoy →</button>'}`;
+  head.innerHTML=`<h2 class="j-date">✍️ ${tr("Notas","Notes")}</h2>
+    <button class="btn btn-primary" id="nNew" style="padding:8px 16px;font-size:13.5px">+ ${tr("Nueva nota","New note")}</button>`;
   root.appendChild(head);
+  const sr=el("input","lib-search"); sr.placeholder=tr("Buscar en tus notas…","Search your notes…");
+  root.appendChild(sr);
+  const listBox=el("div"); listBox.style.marginTop="6px"; root.appendChild(listBox);
+  const draw=q=>{
+    listBox.innerHTML="";
+    q=(q||"").toLowerCase();
+    const upN=n=> typeof n.up==="number" ? n.up : (Date.parse((n.up||n.d||"2000-01-01")+"T12:00")||0);
+    let notes=[...N.list].sort((a,b)=>upN(b)-upN(a));
+    if(q) notes=notes.filter(n=>((n.tit||"")+" "+(n.fold||"")+" "+stripTags(n.html||"")).toLowerCase().includes(q));
+    if(!notes.length){ listBox.appendChild(el("div","lib-empty", q?tr("Nada con ese texto.","Nothing matches."):tr('Tu primera nota: "+ Nueva nota". Ej: Reunión presencial · AON.','Your first note: "+ New note".'))); return; }
+    const sinC=tr("Sin carpeta","No folder");
+    const folds=[...new Set(notes.map(n=>n.fold||sinC))];
+    folds.forEach(f=>{
+      listBox.appendChild(el("p","j-past-title","📁 "+f));
+      notes.filter(n=>(n.fold||sinC)===f).forEach(n=>{
+        const row=el("div","j-entry");
+        row.innerHTML=`<span class="jd">${esc(n.tit||tr("(sin título)","(untitled)"))}</span>
+          <span class="jp">${esc(trim(stripTags(n.html||"").replace(/\s+/g," "),80))}</span>
+          <span class="q-sub" style="font-size:11px;flex:0 0 auto">${esc(n.d||"")}</span>`;
+        row.onclick=()=>openNote(n.id);
+        listBox.appendChild(row);
+      });
+    });
+  };
+  draw();
+  sr.oninput=()=>draw(sr.value);
+  $("#nNew").onclick=()=>{
+    const n={id:"n"+Date.now(), tit:"", fold:"", d:todayStr(), html:"", up:Date.now()};
+    N.list.push(n); saveStore("notes",N); openNote(n.id);
+  };
+}
+function openNote(id){
+  VIEW="journal"; if(typeof dockComposer==="function") dockComposer();
+  const N=notesStore(); const n=N.list.find(x=>x.id===id);
+  if(!n) return renderJournal();
+  const root=$("#canvas"); root.style.display="block"; root.className=""; root.innerHTML=""; CURRENT=null;
+  const saveN=()=>{ n.up=Date.now(); saveStore("notes",N); };
+  const head=el("div","j-head");
+  head.innerHTML=`<button class="lib-act" id="nBack">← ${tr("Notas","Notes")}</button>
+    <span class="q-sub" style="font-size:12px">${tr("selecciona texto y clic derecho → tarea","select text, right-click → task")}</span>`;
+  root.appendChild(head);
+  $("#nBack").onclick=renderJournal;
+  const titRow=el("div","n-titrow");
+  titRow.innerHTML=`<input id="nTit" class="n-tit" placeholder="${tr("Título — ej: Reunión presencial · AON","Title — e.g. Meeting · AON")}" value="${esc(n.tit||"")}">
+    <input id="nFold" class="n-fold" placeholder="📁 ${tr("carpeta","folder")}" value="${esc(n.fold||"")}">
+    <span class="q-sub" style="font-size:12px;flex:0 0 auto">${esc(n.d)}</span>
+    <span class="t-act t-del" id="nDel" style="opacity:.7" title="${tr("Eliminar nota","Delete note")}">✕</span>`;
+  root.appendChild(titRow);
+  $("#nTit").oninput=e=>{ n.tit=e.target.value; saveN(); };
+  $("#nFold").oninput=e=>{ n.fold=e.target.value; saveN(); };
+  $("#nDel").onclick=()=>{ if(confirm(tr("¿Eliminar esta nota?","Delete this note?"))){ N.list=N.list.filter(x=>x.id!==id); saveStore("notes",N); renderJournal(); } };
   // toolbar de formato
   const tb=el("div","j-toolbar");
   const TOOLS=[["<b>B</b>","bold","Negrita (⌘B)"],["<i>I</i>","italic","Cursiva (⌘I)"],["<u>U</u>","underline","Subrayado (⌘U)"],
@@ -2621,58 +2788,63 @@ function renderJournal(ds){
   root.appendChild(tplRow);
   const ta=el("div","j-editor");
   ta.contentEditable="true"; ta.spellcheck=false;
-  ta.setAttribute("data-placeholder","Escribe libre… se guarda solo.");
-  let stored=J.e[J_DATE]||"";
-  if(stored && !/</.test(stored)) stored=esc(stored).replace(/\n/g,"<br>"); // migrar texto plano antiguo
-  ta.innerHTML=stored;
+  ta.setAttribute("data-placeholder",tr("Escribe libre… se guarda solo. Selecciona algo y clic derecho para volverlo tarea.","Write freely… autosaves. Select text and right-click to turn it into a task."));
+  ta.innerHTML=n.html||"";
   root.appendChild(ta);
   const meta=el("div","j-meta");
-  const words=()=>{ const t=ta.textContent.trim(); return (t? t.split(/\s+/).length:0)+" palabras"; };
+  const words=()=>{ const t=ta.textContent.trim(); return (t? t.split(/\s+/).length:0)+" "+tr("palabras","words"); };
   const esLocal=["localhost","127.0.0.1"].includes(location.hostname); // el puente a Apple Notes vive en el Mac
-  meta.innerHTML=`<span class="j-words">${words()}</span><span><span class="j-saved" style="opacity:0">✓ Guardado</span>
-    ${esLocal?`<button class="lib-act" id="jApple" style="margin-left:10px" title="Crea la nota en Apple Notes (carpeta Nítido) — llega a tu iPhone por iCloud">📲 Al iPhone</button>`:""}
-    <button class="lib-act" id="jAnalyze" style="margin-left:6px">✨ Hacer nítido esta entrada</button></span>`;
+  meta.innerHTML=`<span class="j-words">${words()}</span><span><span class="j-saved" style="opacity:0">✓ ${tr("Guardado","Saved")}</span>
+    ${esLocal?`<button class="lib-act" id="jApple" style="margin-left:10px" title="Crea la nota en Apple Notes — llega a tu iPhone por iCloud">📲 iPhone</button>`:""}
+    <button class="lib-act" id="jAnalyze" style="margin-left:6px">✨ ${tr("Hacer nítido","Make it crisp")}</button></span>`;
   root.appendChild(meta);
   ta.addEventListener("input",()=>{
     meta.querySelector(".j-words").textContent=words();
     clearTimeout(_jT);
     _jT=setTimeout(()=>{
-      const Jn=loadStore("journal"); Jn.e=Jn.e||{};
-      if(ta.textContent.trim()) Jn.e[J_DATE]=ta.innerHTML; else delete Jn.e[J_DATE];
-      saveStore("journal",Jn);
+      n.html=ta.innerHTML; saveN();
       const s=meta.querySelector(".j-saved"); s.style.opacity=1; setTimeout(()=>s.style.opacity=0,1400);
     },500);
   });
   $("#jAnalyze").onclick=()=>{ if(ta.textContent.trim()) processText(ta.innerText.trim()); };
   if($("#jApple")) $("#jApple").onclick=async()=>{
     const b=$("#jApple");
-    if(!ta.textContent.trim()){ b.textContent="✍️ escribe algo primero"; setTimeout(()=>b.textContent="📲 Al iPhone",1800); return; }
-    b.textContent="⏳ Enviando…";
+    if(!ta.textContent.trim()){ b.textContent="✍️ escribe algo primero"; setTimeout(()=>b.textContent="📲 iPhone",1800); return; }
+    b.textContent="⏳…";
     try{
       const r=await fetch("/apple-note",{method:"POST",headers:{"Content-Type":"application/json"},
-        body:JSON.stringify({title:"✍️ "+fmtDateLong(J_DATE)+" — Nítido", body:"<div>"+ta.innerHTML+"</div>"})});
+        body:JSON.stringify({title:(n.tit||"Nota")+" — VM Planner", body:"<div>"+ta.innerHTML+"</div>"})});
       const j=await r.json();
       if(!j.ok) throw new Error(j.error||"falló");
-      b.textContent="✓ En Apple Notes"; setTimeout(()=>b.textContent="📲 Al iPhone",2500);
+      b.textContent="✓ En Apple Notes"; setTimeout(()=>b.textContent="📲 iPhone",2500);
     }catch(e){
       b.textContent="⚠️ "+(String(e.message).includes("autoriza")||String(e.message).includes("1743")?"autoriza en Ajustes → Privacidad":"no pude — ¿server corriendo?");
-      setTimeout(()=>b.textContent="📲 Al iPhone",4000);
+      setTimeout(()=>b.textContent="📲 iPhone",4000);
     }
   };
-  const jt=$("#jToday"); if(jt) jt.onclick=()=>renderJournal(todayStr());
-  // entradas anteriores
-  const past=Object.keys(J.e).filter(d=>d!==J_DATE && J.e[d] && J.e[d].trim()).sort().reverse();
-  if(past.length){
-    root.appendChild(el("p","j-past-title","Entradas anteriores"));
-    past.slice(0,30).forEach(d=>{
-      const row=el("div","j-entry");
-      row.innerHTML=`<span class="jd">${fmtDateLong(d)}</span><span class="jp">${esc(trim(stripTags(J.e[d]).replace(/\s+/g," "),90))}</span>`;
-      row.onclick=()=>renderJournal(d);
-      root.appendChild(row);
-    });
-  }
+  // ✚ clic derecho sobre texto seleccionado → crear tarea (aquí + Google)
+  ta.addEventListener("contextmenu",e=>{
+    const sel=String(getSelection()).trim();
+    if(!sel) return;
+    e.preventDefault();
+    document.querySelectorAll(".ctx-pop").forEach(x=>x.remove());
+    const m=el("div","ctx-pop","✚ "+tr("Crear tarea","Create task")+": “"+trim(sel,38)+"”");
+    m.style.left=Math.min(e.clientX, innerWidth-300)+"px"; m.style.top=(e.clientY+6)+"px";
+    document.body.appendChild(m);
+    m.onmousedown=ev=>ev.stopPropagation();
+    m.onclick=()=>{
+      m.remove();
+      const Q=loadStore("quick"); Q.items=Q.items||[];
+      const nt={txt:trim(sel,140), done:false, abcde:null, created:todayStr(), snooze:null};
+      Q.items.unshift(nt); saveStore("quick",Q); refreshBadges();
+      if(gClientId()&&gConnected()) gCreateTask(nt.txt).then(g=>{ Object.assign(nt,g); saveStore("quick",Q); }).catch(()=>{});
+      toastMini("✓ "+tr("Tarea creada — está en ⚡ Hoy","Task created — it's in ⚡ Today"));
+    };
+    setTimeout(()=>{ const h=ev=>{ if(!m.contains(ev.target)){ m.remove(); document.removeEventListener("mousedown",h); } };
+      document.addEventListener("mousedown",h); },0);
+  });
   root.scrollIntoView({behavior:"smooth",block:"start"});
-  setTimeout(()=>ta.focus(),80);
+  setTimeout(()=>{ (n.tit?ta:$("#nTit")).focus(); },80);
 }
 
 /* ---------- ⚡ Tareas rápidas (solo HOY: prioridad, edad, mañana) ---------- */
@@ -2730,11 +2902,11 @@ function dayEnergy(){
   e+=Math.min(10,Math.round((t.focus||0)*0.4));
   e=Math.min(100,e);
   let next="";
-  if(!plan) next="+25 al elegir tus 2 importantes";
-  else if(!t.am&&!t.frog) next="+25 con tu #1 de la mañana";
-  else if(!t.pm) next="+20 con tu #2 de la tarde";
-  else if((t.done||0)<4) next="+5 por tarea completada";
-  else if((t.focus||0)<25) next="+ foco 🎯 para el remate";
+  if(!plan) next=tr("+25 al elegir tus 2 importantes","+25 for picking your 2");
+  else if(!t.am&&!t.frog) next=tr("+25 con tu #1 de la mañana","+25 with your AM #1");
+  else if(!t.pm) next=tr("+20 con tu #2 de la tarde","+20 with your PM #2");
+  else if((t.done||0)<4) next=tr("+5 por tarea completada","+5 per task done");
+  else if((t.focus||0)<25) next=tr("+ foco 🎯 para el remate","+ focus 🎯 to finish");
   return {e, next, full:e>=100};
 }
 function renderQuick(){
@@ -2782,7 +2954,7 @@ function renderQuick(){
   const pendDay=n=>Q.items.filter(t=>!t.done&&!isRoutine(t)&&enDia(t,n)).length;
   const dayRow=el("div","q-filters");
   dayRow.style.cssText="display:flex;gap:7px;flex-wrap:wrap;align-items:center;margin:4px 0 12px";
-  [["Hoy",0],["Mañana",1],["Pasado mañana",2]].forEach(([lb,n])=>{
+  [[tr("Hoy","Today"),0],[tr("Mañana","Tomorrow"),1],[tr("Pasado mañana","Day after"),2]].forEach(([lb,n])=>{
     const cnt=pendDay(n);
     const c=el("button","day-chip"+(QDAYF===n?" sel":""), lb+(cnt?` · ${cnt}`:""));
     c.onclick=()=>{ QDAYF=n; renderQuick(); };
@@ -2794,56 +2966,58 @@ function renderQuick(){
   if(QDAYF===0){
     const en=dayEnergy();
     const eBox=el("div","energy"+(en.full?" full":""));
-    eBox.innerHTML=`<div class="energy-top"><span>⚡ ENERGÍA DEL DÍA</span><span>${en.full?"💯 día completo — imparable":esc(en.next)}</span></div>
+    eBox.innerHTML=`<div class="energy-top"><span>⚡ ${tr("ENERGÍA DEL DÍA","DAY ENERGY")}</span><span>${en.full?tr("💯 día completo — imparable","💯 perfect day — unstoppable"):esc(en.next)}</span></div>
       <div class="energy-bar"><div class="energy-fill" style="width:${en.e}%"></div></div>
       <div class="energy-pct">${en.e}%</div>`;
     root.appendChild(eBox);
   }
-  if(!planningDone() && QDAYF===0){
-    // misma tarjeta que "LO IMPORTANTE DE HOY", en estado vacío: un solo punto de entrada al ritual
+  // ¿existen los 2 importantes? (pendientes o hechos hoy) — UNA sola tarjeta con dos estados
+  const topsAll=Q.items.filter(t=>t.top && (!t.snooze||t.snooze<=hoy));
+  if(QDAYF===0 && !topsAll.length){
     const nightC=new Date().getHours()>=19;
     const cta=el("div","top-card");
-    cta.innerHTML=`<div class="top-label">LO IMPORTANTE DE ${nightC?"MAÑANA":"HOY"}</div>
+    cta.innerHTML=`<div class="top-label">${tr("LO IMPORTANTE DE","THE IMPORTANT OF")} ${nightC?tr("MAÑANA","TOMORROW"):tr("HOY","TODAY")}</div>
       <div class="top-row">
         <span class="top-ic">✦</span>
         <div class="top-main">
-          <div class="top-txt" style="font-weight:600;color:var(--ink-soft)">${nightC?"Deja elegidas tus 2 de mañana antes de cerrar el día.":"Aún no eliges tus 2 del día — una AM, una PM."}</div>
+          <div class="top-txt" style="font-weight:600;color:var(--ink-soft)">${nightC?tr("Deja elegidas tus 2 de mañana antes de cerrar el día.","Pick tomorrow's 2 before you close the day."):tr("Elige tus 2 del día — una AM, una PM.","Pick your 2 for today — one AM, one PM.")}</div>
         </div>
-        <button class="btn btn-primary" id="homePlan" style="padding:8px 18px;font-size:13.5px">Elegir →</button>
+        <button class="btn btn-primary" id="homePlan" style="padding:8px 18px;font-size:13.5px">${tr("Elegir","Choose")} →</button>
       </div>
-      ${new Date().getDay()===0?`<p style="margin:2px 0 8px;font-size:12px"><span id="sunWeek" style="color:var(--accent);font-weight:700;cursor:pointer;text-decoration:underline">Es domingo: mira tu semana →</span></p>`:""}`;
+      ${new Date().getDay()===0?`<p style="margin:2px 0 8px;font-size:12px"><span id="sunWeek" style="color:var(--accent);font-weight:700;cursor:pointer;text-decoration:underline">${tr("Es domingo: mira tu semana","It's Sunday: check your week")} →</span></p>`:""}`;
     root.appendChild(cta);
     const sw=cta.querySelector("#sunWeek"); if(sw) sw.onclick=()=>renderWeek();
   }
   if(GSYNC.err) root.appendChild(el("div","g-err","⚠️ "+esc(GSYNC.err)+' — <span style="text-decoration:underline;cursor:pointer" onclick="googleSettings()">revisar conexión</span>'));
-  // ✦ LO IMPORTANTE DE HOY (máximo 2: AM y PM)
-  const tops=Q.items.filter(t=>t.top && !t.done && (!t.snooze||t.snooze<=hoy))
-    .sort((a,b)=>(a.top==="AM"?0:1)-(b.top==="AM"?0:1));
+  // ✦ LO IMPORTANTE DE HOY (máximo 2: AM y PM; las hechas quedan tachadas en la misma tarjeta)
+  const tops=[...topsAll].sort((a,b)=>(a.top==="AM"?0:1)-(b.top==="AM"?0:1));
   if(tops.length && QDAYF===0){
     const tc=el("div","top-card");
-    tc.innerHTML=`<div class="top-label">LO IMPORTANTE DE HOY</div>`+
-      tops.map((t,i)=>`<div class="top-row" data-i="${i}">
+    const listas=tops.every(t=>t.done);
+    tc.innerHTML=`<div class="top-label">${tr("LO IMPORTANTE DE HOY","TODAY'S IMPORTANT")}${listas?` · <span style="color:var(--accent)">${tr("COMPLETADO","DONE")} ✓</span>`:""}</div>`+
+      tops.map((t,i)=>`<div class="top-row${t.done?" top-ok":""}" data-i="${i}">
         <span class="top-ic">${t.top==="AM"?"☀️":"🌇"}</span>
         <div class="top-main">
           <div class="top-txt">${esc(t.txt)}</div>
-          ${t.top==="AM"&&t.bite?`<div class="top-sub">▶ ${esc(t.bite)}</div>`:t.top==="AM"&&t.goal?`<div class="top-sub">🎯 ${esc(t.goal)}</div>`:""}
+          ${!t.done&&t.top==="AM"&&t.bite?`<div class="top-sub">▶ ${esc(t.bite)}</div>`:!t.done&&t.top==="AM"&&t.goal?`<div class="top-sub">🎯 ${esc(t.goal)}</div>`:""}
         </div>
+        ${t.done?`<span class="top-hora" style="background:transparent">✓</span>`:`
         ${t.hora?`<span class="top-hora">${esc(t.hora)}</span>`:""}
-        <button class="lib-act top-go" title="25 min de foco">▶ 25’</button>
-        <button class="lib-act top-done">✓ Hecha</button>
+        <button class="lib-act top-go" title="${tr("25 min de foco","25 min focus")}">▶ 25’</button>
+        <button class="lib-act top-done">✓ ${tr("Hecha","Done")}</button>`}
       </div>`).join("");
     tc.querySelectorAll(".top-row").forEach(row=>{
       const t=tops[+row.dataset.i];
-      row.querySelector(".top-go").onclick=()=>startFocus((t.top==="AM"?"☀️ ":"🌇 ")+t.txt, 25);
-      row.querySelector(".top-done").onclick=()=>{ t.done=true; t.doneAt=hoy;
+      const go=row.querySelector(".top-go"); if(go) go.onclick=()=>startFocus((t.top==="AM"?"☀️ ":"🌇 ")+t.txt, 25);
+      const dn=row.querySelector(".top-done"); if(dn) dn.onclick=()=>{ t.done=true; t.doneAt=hoy;
         const st=loadStore("stats"); st.frogs=(st.frogs||0)+1; st.done=(st.done||0)+1; saveStore("stats",st); recordReview();
-        todayBump(t.top==="AM"?"am":"pm",1);
+        todayBump(t.top==="AM"?"am":"pm",1); archiveAdd(t);
         save(); gSetStatus(t,true); confetti(); renderQuick(); };
     });
     root.appendChild(tc);
   }
   const add=el("div","q-add");
-  add.innerHTML=`<input type="text" id="qNew" placeholder="Escribe y Enter…  (! al inicio = prioridad A)">`;
+  add.innerHTML=`<input type="text" id="qNew" placeholder="${tr("Escribe y Enter…  (! al inicio = prioridad A)","Type and Enter…  (! prefix = A priority)")}">`;
   root.appendChild(add);
   const filtRow=el("div","q-filters"); filtRow.style.cssText="display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin:2px 0 8px";
   root.appendChild(filtRow);
@@ -2860,7 +3034,7 @@ function renderQuick(){
     const ageChip=(!t.done&&age>0)?`<span class="age-chip ${age===1?"age-1":"age-2"}">${age===1?"ayer":"hace "+age+" días"}</span>`:"";
     row.innerHTML=`<span class="box" title="${t.done?"Reabrir":"Completar"}"></span>
       <span class="ab ${t.abcde?"ab-"+t.abcde:"ab-x"}" title="Prioridad ABCDE (clic para cambiar)">${t.abcde||"·"}</span>
-      <span class="ttxt">${t.top==="AM"?"☀️ ":t.top==="PM"?"🌇 ":""}${esc(t.txt)}${t.gid?` <span class="g-badge" title="Google Tasks · ${esc(t.glistName||"")}">G</span>`:""}${t.abcde==="D"?" <span style=\'font-size:11px;color:#4F86C6;font-weight:700\'>· delegar</span>":""}</span>
+      <span class="ttxt" title="${tr("Abrir detalle (links, contexto)","Open details (links, context)")}">${t.top==="AM"?"☀️ ":t.top==="PM"?"🌇 ":""}${esc(t.txt)}${/https?:\/\//.test(t.ctx||"")?' <span class="lnk-ind">🔗</span>':""}${t.gid?` <span class="g-badge" title="Google Tasks · ${esc(t.glistName||"")}">G</span>`:""}${t.abcde==="D"?" <span style=\'font-size:11px;color:#4F86C6;font-weight:700\'>· delegar</span>":""}</span>
       ${t.hora&&!t.done?`<span class="hora-chip" title="Cambiar hora">🕘 ${esc(t.hora)}</span>`:(!t.done?`<span class="hora-chip empty" title="Asignar hora">🕘 hora</span>`:"")}
       ${ageChip}
       ${snoozed&&fechaDe(t)?`<span class="due-chip t-cal" title="Cambiar fecha" style="cursor:pointer">📅 ${fmtDia(fechaDe(t))}</span>`:""}
@@ -2883,7 +3057,8 @@ function renderQuick(){
       Q.items.splice(Q.items.indexOf(t),1); save(); renderQuick();
     };
     row.querySelector(".box").onclick=()=>{ t.done=!t.done; t.doneAt=t.done?hoy:null;
-      if(t.done){ const st=loadStore("stats"); st.done=(st.done||0)+1; saveStore("stats",st); recordReview(); }
+      if(t.done){ const st=loadStore("stats"); st.done=(st.done||0)+1; saveStore("stats",st); recordReview(); archiveAdd(t); }
+      else archiveRemove(t.txt);
       todayBump("done", t.done?1:-1);
       save(); gSetStatus(t,t.done); renderQuick(); };
     row.querySelector(".ab").onclick=e=>{
@@ -2918,7 +3093,7 @@ function renderQuick(){
     if(moon) moon.onclick=()=>moveTo(localDate(new Date(Date.now()+86400000)));
     const sun=row.querySelector("[title=\'Traer de vuelta a hoy\']");
     if(sun) sun.onclick=()=>moveTo(hoy);
-    row.querySelector(".ttxt").ondblclick=()=>{ const nv=prompt("Editar:",t.txt); if(nv!=null&&nv.trim()){t.txt=nv.trim(); save(); draw();} };
+    row.querySelector(".ttxt").onclick=()=>openTaskDetail(t, save, renderQuick);
     return row;
   };
   const draw=()=>{
@@ -2940,7 +3115,7 @@ function renderQuick(){
       mkChip("Todas","");
       cats.forEach(c=>mkChip(c,c));
     }
-    const visible=all.filter(t=>!(QDAYF===0&&t.top&&!t.done) && (!qcat || catOf(t)===qcat));
+    const visible=all.filter(t=>!(QDAYF===0&&t.top) && (!qcat || catOf(t)===qcat));
     const rutinas=Q.items.filter(t=>isRoutine(t));
     const rank=t=>t.done?9:({A:0,B:1,C:2,D:3}[t.abcde] ?? 4);
     const sorted=[...visible].sort((a,b)=>{
@@ -2950,14 +3125,16 @@ function renderQuick(){
     });
     if(!sorted.length&&!(QDAYF===0&&tops.length)) list.appendChild(el("div","tb-empty",QDAYF===0?"Día despejado. Escribe arriba y Enter ✨":"Nada agendado para este día ✨"));
     sorted.forEach(t=>list.appendChild(mkRow(t,{snoozed:QDAYF>0})));
-    const lbDia=QDAYF===0?"hoy":QDAYF===1?"mañana":"pasado mañana";
+    const lbDia=QDAYF===0?tr("hoy","today"):QDAYF===1?tr("mañana","tomorrow"):tr("pasado mañana","day after");
     const pend=all.filter(t=>!t.done).length;
     const nA=all.filter(t=>!t.done&&t.abcde==="A").length;
     const done=QDAYF===0?Q.items.filter(t=>t.done&&!isRoutine(t)).length:0;
-    foot.innerHTML=`<span><b>${pend}</b> para ${lbDia}${nA?` · <b style="color:#C6553B">${nA} A</b>`:""}${QDAYF===0?` · ${done} hecha${done===1?"":"s"}`:""}</span>
+    foot.innerHTML=`<span><b>${pend}</b> ${tr("para","for")} ${lbDia}${nA?` · <b style="color:#C6553B">${nA} A</b>`:""}${QDAYF===0?` · ${done} ${tr(done===1?"hecha":"hechas", "done")}`:""}</span>
       <span style="display:flex;gap:8px">
-      ${pend&&QDAYF===0?'<button class="lib-act" id="qAllMoon">🌙 Todas a mañana</button>':""}
-      ${done?'<button class="lib-act" id="qClear">🧹 Limpiar hechas</button>':""}</span>`;
+      ${pend&&QDAYF===0?`<button class="lib-act" id="qAllMoon">🌙 ${tr("Todas a mañana","All to tomorrow")}</button>`:""}
+      ${done?`<button class="lib-act" id="qClear">🧹 ${tr("Limpiar hechas","Clear done")}</button>`:""}
+      <button class="lib-act" id="qArch" title="${tr("Historial de tareas hechas","Completed tasks history")}">🗂</button></span>`;
+    const qa=$("#qArch"); if(qa) qa.onclick=openArchive;
     const qc=$("#qClear"); if(qc) qc.onclick=()=>{ Q.items=Q.items.filter(t=>!t.done); save(); draw(); };
     const qm=$("#qAllMoon"); if(qm) qm.onclick=()=>{ const m=localDate(new Date(Date.now()+86400000));
       Q.items.filter(t=>!t.done&&(!t.snooze||t.snooze<=hoy)&&!isRoutine(t)).forEach(t=>{ t.snooze=m; t.due=m; gSetDue(t,m); }); save(); renderQuick(); };
@@ -3366,7 +3543,7 @@ async function openRitual(){
     const filtrado = !ritShowAll && soloA.length>0 && soloA.length<p.length;
     const cands = filtrado ? soloA : p;
     let html=`<div class="rit-step">PASO 1 DE 2${night?" · 🌙 DEJANDO LISTO MAÑANA":""}</div>
-      <h3 class="rit-q">Las 2 más importantes${night?" de mañana":" de hoy"}</h3>
+      <h3 class="rit-q">${tr("Las 2 más importantes","Your 2 most important")}${night?tr(" de mañana"," for tomorrow"):tr(" de hoy"," today")}</h3>
       <p class="rit-sub">Una para la <b>mañana</b> (tu #1, foco máximo) y una para la <b>tarde</b>. Nada más.</p>
       <div class="metas-strip">${metas.length
         ? `<span class="ms-lb">🎯 TUS METAS:</span> ${metas.map((m,i)=>`<span class="tp-item goal-chip${goalSel===m?" sel":""}" data-g="${i}" title="Marca cuál empuja tu #1">${esc(m)}</span>`).join("")}`
@@ -3439,7 +3616,7 @@ async function openRitual(){
     const rest=pend().filter(t=>t!==pickAM && t!==pickPM);
     if(!rest.length){ terminar(); return; }
     let html=`<div class="rit-step">PASO 2 DE 2</div>
-      <h3 class="rit-q">Clasifica el resto: A·B·C·D·E</h3>
+      <h3 class="rit-q">${tr("Clasifica el resto: A·B·C·D·E","Rank the rest: A·B·C·D·E")}</h3>
       <p class="rit-sub"><b>A</b> imprescindible · <b>B</b> debería · <b>C</b> sería lindo · <b>D</b> delegar · <b>E</b> eliminar</p>`;
     rest.forEach((t,i)=>{
       html+=`<div class="rit-row" data-i="${i}"><span class="ro-t">${esc(t.txt)}</span>
@@ -3485,7 +3662,7 @@ async function renderWeek(){
   VIEW="week"; dockComposer();
   const root=$("#canvas"); root.style.display="block"; root.className=""; root.innerHTML=""; CURRENT=null;
   const head=el("div","j-head");
-  head.innerHTML=`<h2 class="j-date">🗓️ Estrategia de tu semana</h2>`;
+  head.innerHTML=`<h2 class="j-date">🗓️ ${tr("Estrategia de tu semana","Your week strategy")}</h2>`;
   root.appendChild(head);
   const sub=el("p","rit-sub","Tu Google Calendar manda. Aquí ves tus <b>tiempos muertos reales</b> (7:00–19:00) para decidir dónde meter tus importantes, foco y avance descomunal.");
   sub.style.margin="4px 0 18px"; root.appendChild(sub);
@@ -3929,6 +4106,20 @@ setTimeout(()=>{ if(!planningDone()) openRitual(); }, 900);
   fetch("/backup",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(data)})
     .then(r=>r.json()).then(j=>{ if(j.ok) localStorage.setItem("nitido-lastbackup",todayStr()); })
     .catch(()=>{});
+})();
+
+
+// 🌐 toggle ES/EN (arriba a la derecha)
+(function langBoot(){
+  const b=$("#langTg"); if(!b) return;
+  b.textContent = LANG()==="en" ? "ES" : "EN";
+  b.onclick=()=>{ localStorage.setItem("nitido-lang", LANG()==="en"?"es":"en"); location.reload(); };
+  if(LANG()==="en"){
+    const map={"Mi día":"My day","Hoy":"Today","Semana":"Week","Foco":"Focus","Notas":"Notes","Progreso":"Progress","Tema":"Theme"};
+    document.querySelectorAll(".rail-btn .r-lb").forEach(x=>{ if(map[x.textContent]) x.textContent=map[x.textContent]; });
+    const tg=document.querySelector(".tagline"); if(tg) tg.textContent="Pick what matters, protect your time, produce.";
+    const ft=document.querySelector(".foot"); if(ft) ft.textContent="VM Planner · 2 big things a day → A·B·C·D·E → time blocks — inspired by Brian Tracy";
+  }
 })();
 
 // PWA: service worker (solo cuando se sirve por http/https; abierto como archivo no aplica)
