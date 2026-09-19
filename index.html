@@ -3361,7 +3361,7 @@ async function openRitual(){
     const p=pend(), soloA=p.filter(t=>t.abcde==="A");
     const filtrado = !ritShowAll && soloA.length>0 && soloA.length<p.length;
     const cands = filtrado ? soloA : p;
-    let html=`<div class="rit-step">PASO 1 DE 3${night?" · 🌙 DEJANDO LISTO MAÑANA":""}</div>
+    let html=`<div class="rit-step">PASO 1 DE 2${night?" · 🌙 DEJANDO LISTO MAÑANA":""}</div>
       <h3 class="rit-q">Las 2 más importantes${night?" de mañana":" de hoy"}</h3>
       <p class="rit-sub">Una para la <b>mañana</b> (tu #1, foco máximo) y una para la <b>tarde</b>. Nada más.</p>
       <div class="metas-strip">${metas.length
@@ -3425,10 +3425,16 @@ async function openRitual(){
     };
   };
 
+  const terminar=()=>{ // cierre del ritual: sin paso de horas (se asignan a mano con 🕘 si quieres)
+    if(pickAM) pickAM.goal=goalSel||null;
+    save(); localStorage.setItem("nitido-planday",planFor); closePanel();
+    const st=loadStore("stats"); st.plans=(st.plans||0)+1; saveStore("stats",st); recordReview();
+    focusKindTab("quick"); confetti();
+  };
   const paso2=()=>{
     const rest=pend().filter(t=>t!==pickAM && t!==pickPM);
-    if(!rest.length){ paso3(); return; }
-    let html=`<div class="rit-step">PASO 2 DE 3</div>
+    if(!rest.length){ terminar(); return; }
+    let html=`<div class="rit-step">PASO 2 DE 2</div>
       <h3 class="rit-q">Clasifica el resto: A·B·C·D·E</h3>
       <p class="rit-sub"><b>A</b> imprescindible · <b>B</b> debería · <b>C</b> sería lindo · <b>D</b> delegar · <b>E</b> eliminar</p>`;
     rest.forEach((t,i)=>{
@@ -3436,8 +3442,8 @@ async function openRitual(){
         <span class="rit-abcde">${["A","B","C","D","E"].map(L=>`<span class="ab ${t.abcde===L?"ab-"+L:"ab-x"}" data-l="${L}">${L}</span>`).join("")}</span></div>`;
     });
     html+=`<div class="rit-foot"><button class="lib-act" id="ritBack">← Volver</button>
-      <button class="lib-act" id="ritNext" style="background:var(--accent);color:#fff;border-color:var(--accent)">Siguiente →</button></div>`;
-    showPanel("✦ Planifica tu día", html);
+      <button class="lib-act" id="ritNext" style="background:var(--accent);color:#fff;border-color:var(--accent)">${night?"🌙 Listo para mañana":"✦ ¡A darle!"}</button></div>`;
+    showPanel(night?"🌙 Planifica mañana":"✦ Planifica tu día", html);
     $("#panelBody").querySelectorAll(".rit-row").forEach(row=>{
       const t=rest[+row.dataset.i];
       row.querySelectorAll(".ab").forEach(b=>b.onclick=()=>{
@@ -3453,53 +3459,7 @@ async function openRitual(){
       // E = eliminar, tal como manda el libro
       const eliminar=rest.filter(t=>t.abcde==="E");
       eliminar.forEach(t=>Q.items.splice(Q.items.indexOf(t),1));
-      save(); paso3();
-    };
-  };
-
-  const paso3=()=>{
-    const conHora=pend().filter(t=>t.top||t.abcde==="A"||t.abcde==="B");
-    const dOff = night ? 1 : 0; // 🌙 de noche planificas MAÑANA: mira los huecos de mañana, no los de hoy
-    const gaps = dayGaps(15, dOff);
-    const amW = topWindow(dOff,0,13), pmW = topWindow(dOff,13,19);
-    const defHora = t=> t.top==="AM" ? (amW?hmt(amW[0]):"09:00") : t.top==="PM" ? (pmW?hmt(pmW[0]):"15:00") : "";
-    const dia = night ? "mañana" : "hoy";
-    let gapLine="";
-    if(gaps && gaps.length){
-      const tot=gaps.reduce((a,[gs,ge])=>a+(ge-gs),0)/60000;
-      gapLine=`<div class="metas-strip"><span class="ms-lb">🗓️ HUECOS LIBRES ${dia.toUpperCase()}:</span>
-        ${gaps.slice(0,6).map(([gs,ge])=>`<span class="tp-item" style="cursor:default">${hmt(gs)}–${hmt(ge)}</span>`).join("")}${gaps.length>6?`<span class="q-sub">+${gaps.length-6} más</span>`:""}
-        <span class="q-sub">total ${Math.floor(tot/60)}h ${Math.round(tot%60)}m</span></div>`;
-    } else if(gaps && !gaps.length){
-      gapLine=`<div class="metas-strip"><span class="ms-lb">⚠️</span><span class="q-sub">${night?"Mañana sin bloques libres":"Ya no quedan bloques libres hoy"} — protege un hueco en tu calendario.</span></div>`;
-    }
-    let html=`<div class="rit-step">PASO 3 DE 3${night?" · 🌙 PARA MAÑANA":""}</div>
-      <h3 class="rit-q">🕘 Bloques de tiempo</h3>
-      <p class="rit-sub"><b>AM = más foco</b>: tu #1 en el primer hueco de la mañana${amW?` (${hmt(amW[0])})`:""}, la #2 en la tarde${pmW?` (${hmt(pmW[0])})`:""}.</p>
-      ${gapLine}
-      <div class="rit-row" style="border-color:var(--accent)"><span>▶️</span>
-        <input class="lib-search" id="biteInp" style="margin:0;flex:1" placeholder="El primer paso de 2 minutos para arrancar tu #1" value="${esc((pickAM&&pickAM.bite)||"")}"></div>`;
-    conHora.forEach((t,i)=>{
-      html+=`<div class="rit-row" data-i="${i}"><span>${t.top==="AM"?"☀️":t.top==="PM"?"🌇":`<span class="ab ab-${t.abcde}">${t.abcde}</span>`}</span>
-        <span class="ro-t">${esc(t.txt)}</span><input type="time" value="${t.hora||defHora(t)}"></div>`;
-    });
-    html+=`<div class="rit-foot"><button class="lib-act" id="ritBack">← Volver</button>
-      <button class="lib-act" id="ritGo" style="background:var(--accent);color:#fff;border-color:var(--accent)">${night?"🌙 Listo para mañana":"✦ ¡A darle!"}</button></div>`;
-    showPanel(night?"🌙 Planifica mañana":"✦ Planifica tu día", html);
-    $("#panelBody").querySelectorAll(".rit-row[data-i]").forEach(row=>{
-      const t=conHora[+row.dataset.i];
-      row.querySelector("input").onchange=e=>{ t.hora=e.target.value||null; save(); };
-    });
-    $("#ritBack").onclick=paso2;
-    $("#ritGo").onclick=()=>{
-      $("#panelBody").querySelectorAll(".rit-row[data-i]").forEach(row=>{
-        const t=conHora[+row.dataset.i]; const v=row.querySelector("input").value;
-        if(v) t.hora=v;
-      });
-      if(pickAM){ pickAM.goal=goalSel||null; const bv=$("#biteInp"); if(bv) pickAM.bite=bv.value.trim()||null; }
-      save(); localStorage.setItem("nitido-planday",planFor); closePanel();
-      const st=loadStore("stats"); st.plans=(st.plans||0)+1; saveStore("stats",st); recordReview();
-      focusKindTab("quick"); confetti();
+      save(); terminar();
     };
   };
   paso1();
