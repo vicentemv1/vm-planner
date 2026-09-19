@@ -972,7 +972,6 @@
   <div class="rail-logo">VM</div>
   <button class="rail-btn" id="openRitualBtn" title="Planificar mi día (2 importantes + ABCDE + horas)"><span class="r-ic">🐸</span><span class="r-lb">Mi día</span></button>
   <button class="rail-btn" id="openQuick" title="Tus tareas de hoy"><span class="r-ic">⚡</span><span class="r-lb">Hoy</span><span class="r-bg warm" id="quickBadge">0</span></button>
-  <button class="rail-btn" id="openWeek" title="Mi semana"><span class="r-ic">🗓️</span><span class="r-lb">Semana</span></button>
   <button class="rail-btn" id="openFocus" title="Sesión de trabajo profundo"><span class="r-ic">🎯</span><span class="r-lb">Foco</span></button>
   <button class="rail-btn" id="openJournal" title="Notas del día"><span class="r-ic">✍️</span><span class="r-lb">Notas</span></button>
   <div class="rail-spacer"></div>
@@ -2996,9 +2995,8 @@ function renderQuick(){
         </div>
         <button class="btn btn-primary" id="homePlan" style="padding:8px 18px;font-size:13.5px">${tr("Elegir","Choose")} →</button>
       </div>
-      ${new Date().getDay()===0?`<p style="margin:2px 0 8px;font-size:12px"><span id="sunWeek" style="color:var(--accent);font-weight:700;cursor:pointer;text-decoration:underline">${tr("Es domingo: mira tu semana","It's Sunday: check your week")} →</span></p>`:""}`;
+`;
     root.appendChild(cta);
-    const sw=cta.querySelector("#sunWeek"); if(sw) sw.onclick=()=>renderWeek();
   }
   if(GSYNC.err) root.appendChild(el("div","g-err","⚠️ "+esc(GSYNC.err)+' — <span style="text-decoration:underline;cursor:pointer" onclick="googleSettings()">revisar conexión</span>'));
   // ✦ LO IMPORTANTE DE HOY (máximo 2: AM y PM; las hechas quedan tachadas en la misma tarjeta)
@@ -4051,7 +4049,7 @@ $("#openQuick").onclick=()=>focusKindTab("quick");
 $("#openRitualBtn").onclick=openRitual;
 
 // 🗓️ Semana
-$("#openWeek").onclick=()=>focusKindTab("week");
+// (pestaña Semana oculta por decisión de diseño — renderWeek queda dormido)
 
 // Foco
 $("#openFocus").onclick=openFocusSetup;
