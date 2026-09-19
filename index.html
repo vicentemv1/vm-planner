@@ -3521,7 +3521,16 @@ function toggleRoutine(t){
 
 /* ---------- ✦ Ritual "Mi Día": 2 importantes (AM·PM) → ABCDE → bloques ---------- */
 function planningDone(){ return (localStorage.getItem("nitido-planday")||"") >= todayStr(); }
-async function openRitual(){
+// ¿qué le falta al día? (decide si el popup aparece y en qué paso parte)
+function ritualNeeds(){
+  const Q=loadStore("quick"); const hoy=todayStr();
+  const pend=(Q.items||[]).filter(t=>!t.done && (!t.snooze||t.snooze<=hoy) && !isRoutine(t));
+  const hayTops=(Q.items||[]).some(t=>t.top && (!t.snooze||t.snooze<=hoy));
+  const sinLetra=pend.filter(t=>!t.top && !t.abcde).length;
+  return { faltaTops: !hayTops && pend.length>0, sinLetra };
+}
+async function openRitual(opts={}){
+  const soloPrior=!!opts.soloPrioridades;
   // tus Google Tasks frescos antes de elegir (máx 2.5s de espera)
   if(gClientId() && gConnected()){ try{ await Promise.race([Promise.all([syncGoogleTasks(true), syncCalendar(false)]), new Promise(r=>setTimeout(r,3000))]); }catch{} }
   const Q=loadStore("quick"); Q.items=Q.items||[];
@@ -3613,9 +3622,10 @@ async function openRitual(){
     focusKindTab("quick"); confetti();
   };
   const paso2=()=>{
-    const rest=pend().filter(t=>t!==pickAM && t!==pickPM);
-    if(!rest.length){ terminar(); return; }
-    let html=`<div class="rit-step">PASO 2 DE 2</div>
+    const rest=pend().filter(t=>t!==pickAM && t!==pickPM && !t.top);
+    // si todo ya tiene letra, no hay nada que preguntar
+    if(!rest.length || (!soloPrior && !rest.some(t=>!t.abcde))){ terminar(); return; }
+    let html=`<div class="rit-step">${soloPrior?tr("PRIORIDADES PENDIENTES","PENDING PRIORITIES"):"PASO 2 DE 2"}</div>
       <h3 class="rit-q">${tr("Clasifica el resto: A·B·C·D·E","Rank the rest: A·B·C·D·E")}</h3>
       <p class="rit-sub"><b>A</b> imprescindible · <b>B</b> debería · <b>C</b> sería lindo · <b>D</b> delegar · <b>E</b> eliminar</p>`;
     rest.forEach((t,i)=>{
@@ -3643,7 +3653,7 @@ async function openRitual(){
       save(); terminar();
     };
   };
-  paso1();
+  if(soloPrior) paso2(); else paso1();
 }
 
 /* ---------- Vistas simples (sin pestañas) ---------- */
@@ -4092,7 +4102,12 @@ renderQuick();
 if(gClientId() && gConnected()) setTimeout(()=>{ syncGoogleTasks(true); syncCalendar(true); }, 300);
 
 // 🐸 el ritual te recibe cada mañana (si aún no planificaste hoy)
-setTimeout(()=>{ if(!planningDone()) openRitual(); }, 900);
+setTimeout(()=>{
+  // el popup aparece SOLO si falta algo: sin AM/PM → elegir; con AM/PM pero tareas sin letra → solo prioridades
+  const n=ritualNeeds();
+  if(n.faltaTops && !planningDone()) openRitual();            // "Hoy no" se respeta
+  else if(!n.faltaTops && n.sinLetra) openRitual({soloPrioridades:true});
+}, 900);
 
 // 💾 Respaldo automático diario del cerebro a disco (via server.py → carpeta backups/)
 (function autoBackup(){
