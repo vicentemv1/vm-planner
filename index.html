@@ -2768,9 +2768,7 @@ function renderQuick(){
     };
     btns.appendChild(gBtn);
   }
-  const planBtn=el("button","lib-act","🐸 Planificar el día");
-  planBtn.onclick=()=>openRitual();
-  btns.appendChild(planBtn);
+  // (el ritual se abre desde la tarjeta "LO IMPORTANTE" o desde 🐸 Mi día en el riel — un solo camino visible)
   head.appendChild(btns);
   root.appendChild(head);
   // el calendario se precalienta en silencio (para el ritual y la vista Semana); la franja visual vive en 🗓️ Semana
@@ -2802,12 +2800,18 @@ function renderQuick(){
     root.appendChild(eBox);
   }
   if(!planningDone() && QDAYF===0){
+    // misma tarjeta que "LO IMPORTANTE DE HOY", en estado vacío: un solo punto de entrada al ritual
     const nightC=new Date().getHours()>=19;
-    const cta=el("div","home-frog");
-    cta.innerHTML=`<h3>${nightC?"Deja elegido mañana":"¿Qué es lo importante hoy?"}</h3>
-      <p>Elige <b>2 cosas</b> — una para la mañana, una para la tarde.<br>El resto es ruido.</p>
-      <button class="btn btn-primary" id="homePlan">Elegir →</button>
-      ${new Date().getDay()===0?`<p style="margin:12px 0 0;font-size:12.5px"><span id="sunWeek" style="color:var(--accent);font-weight:700;cursor:pointer;text-decoration:underline">Es domingo: mira tu semana →</span></p>`:""}`;
+    const cta=el("div","top-card");
+    cta.innerHTML=`<div class="top-label">LO IMPORTANTE DE ${nightC?"MAÑANA":"HOY"}</div>
+      <div class="top-row">
+        <span class="top-ic">✦</span>
+        <div class="top-main">
+          <div class="top-txt" style="font-weight:600;color:var(--ink-soft)">${nightC?"Deja elegidas tus 2 de mañana antes de cerrar el día.":"Aún no eliges tus 2 del día — una AM, una PM."}</div>
+        </div>
+        <button class="btn btn-primary" id="homePlan" style="padding:8px 18px;font-size:13.5px">Elegir →</button>
+      </div>
+      ${new Date().getDay()===0?`<p style="margin:2px 0 8px;font-size:12px"><span id="sunWeek" style="color:var(--accent);font-weight:700;cursor:pointer;text-decoration:underline">Es domingo: mira tu semana →</span></p>`:""}`;
     root.appendChild(cta);
     const sw=cta.querySelector("#sunWeek"); if(sw) sw.onclick=()=>renderWeek();
   }
