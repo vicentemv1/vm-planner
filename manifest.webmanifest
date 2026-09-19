@@ -1,0 +1,25 @@
+{
+  "name": "VM Planner — Planifica tu día",
+  "short_name": "VM Planner",
+  "description": "Tu sistema de planificación diaria: rana, ABCDE, bloques de tiempo y Google Tasks.",
+  "start_url": "./index.html",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#FAFAFA",
+  "theme_color": "#1D1D1F",
+  "lang": "es",
+  "icons": [
+    {
+      "src": "icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}
