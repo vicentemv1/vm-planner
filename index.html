@@ -2131,7 +2131,10 @@ function parseQA(text){
 
 // Almacenamiento de dominio (Leitner) en localStorage
 function loadStore(k){ try{ return JSON.parse(localStorage.getItem("nitido-"+k)||"{}"); }catch{ return {}; } }
-function saveStore(k,v){ try{ localStorage.setItem("nitido-"+k, JSON.stringify(v)); }catch{} }
+function saveStore(k,v){
+  try{ localStorage.setItem("nitido-"+k, JSON.stringify(v)); }catch{}
+  if(typeof SYNC_KEYS!=="undefined" && SYNC_KEYS.includes(k) && typeof syncMark==="function") syncMark();
+}
 function hash(s){ let h=0; for(let i=0;i<s.length;i++){ h=(h<<5)-h+s.charCodeAt(i); h|=0; } return "k"+Math.abs(h); }
 // Divide el texto en secciones {title, items[]} detectando líneas-título
 function segment(text){
@@ -2599,6 +2602,73 @@ function toastMini(msg){
   setTimeout(()=>t.classList.add("on"),10);
   setTimeout(()=>{ t.classList.remove("on"); setTimeout(()=>t.remove(),300); },1900);
 }
+/* ☁️ Espejo entre dispositivos vía Google Drive (carpeta oculta de la app):
+   la capa local (importantes AM/PM, letras, rutinas, metas, notas, historial, energía)
+   viaja contigo — mismo login de Google = mismo estado en Mac, prod y celular. */
+const SYNC_KEYS=["quick","routines","goals","stats","notes","archive"];
+let SY={fileId:null, timer:null, busy:false, ready:false}; // ready: recién tras el primer pull se permite subir
+const symGet=()=>{ try{ return JSON.parse(localStorage.getItem("nitido-symeta")||'{"applied":0,"edit":0}'); }catch{ return {applied:0,edit:0}; } };
+const symSet=m=>{ try{ localStorage.setItem("nitido-symeta", JSON.stringify(m)); }catch{} };
+function syncMark(){
+  if(!SY.ready) return; // durante el arranque nada local puede pisar el espejo remoto
+  const m=symGet(); m.edit=Date.now(); symSet(m);
+  clearTimeout(SY.timer); SY.timer=setTimeout(()=>drivePush().catch(()=>{}), 2500);
+}
+async function driveFileId(){
+  if(SY.fileId) return SY.fileId;
+  const r=await gFetch("https://www.googleapis.com/drive/v3/files?spaces=appDataFolder&q="+encodeURIComponent("name='vmplanner-state.json'")+"&fields=files(id)");
+  if(!r.ok) throw new Error("drive "+r.status);
+  const f=((await r.json()).files||[])[0];
+  if(f){ SY.fileId=f.id; return f.id; }
+  const c=await gFetch("https://www.googleapis.com/drive/v3/files",{method:"POST", body:JSON.stringify({name:"vmplanner-state.json", parents:["appDataFolder"]})});
+  if(!c.ok) throw new Error("drive create "+c.status);
+  SY.fileId=(await c.json()).id;
+  return SY.fileId;
+}
+function packState(){
+  const data={}; SYNC_KEYS.forEach(k=>data[k]=loadStore(k));
+  data._planday=localStorage.getItem("nitido-planday")||"";
+  return data;
+}
+function applyState(st){
+  SYNC_KEYS.forEach(k=>{ if(st.data && st.data[k]!==undefined){ try{ localStorage.setItem("nitido-"+k, JSON.stringify(st.data[k])); }catch{} } });
+  if(st.data && st.data._planday!==undefined) localStorage.setItem("nitido-planday", st.data._planday);
+  symSet({applied:st.at, edit:0});
+  refreshBadges();
+  if(VIEW==="quick") renderQuick(); else if(VIEW==="journal") renderJournal();
+}
+async function drivePush(){
+  if(!(gClientId()&&gConnected()) || SY.busy || !SY.ready) return;
+  SY.busy=true;
+  try{
+    const id=await driveFileId();
+    const st={at:Date.now(), data:packState()};
+    const r=await gFetch("https://www.googleapis.com/upload/drive/v3/files/"+id+"?uploadType=media",{method:"PATCH", body:JSON.stringify(st)});
+    if(r.ok) symSet({applied:st.at, edit:0});
+  } finally{ SY.busy=false; }
+}
+async function drivePull(){
+  if(!(gClientId()&&gConnected()) || SY.busy){ SY.ready=true; return; }
+  SY.busy=true;
+  let pushAfter=false;
+  try{
+    const id=await driveFileId();
+    const r=await gFetch("https://www.googleapis.com/drive/v3/files/"+id+"?alt=media");
+    if(r.ok){
+      const txt=await r.text();
+      const st = txt && txt.trim() ? JSON.parse(txt) : null;
+      const m=symGet();
+      if(!st || !st.at){ pushAfter=true; }                        // archivo recién creado: subir lo local
+      else if(st.at>m.applied && st.at>m.edit) applyState(st);    // lo remoto es más nuevo → aplicar
+      else if(m.edit>st.at) pushAfter=true;                       // lo local quedó más nuevo (push perdido) → subir
+    }
+  } finally{ SY.busy=false; SY.ready=true; }
+  if(pushAfter) await drivePush().catch(()=>{});
+}
+// ciclo: al partir, cada 60s y al volver a la pestaña
+setInterval(()=>{ drivePull().catch(()=>{}); }, 60000);
+document.addEventListener("visibilitychange",()=>{ if(!document.hidden) drivePull().catch(()=>{}); });
+
 /* 🔗 detalle de tarea: título editable + contexto con links clickeables (Gmail, WhatsApp, Docs…) */
 function openTaskDetail(t, save, after){
   const links=()=> (String(t.ctx||"").match(/https?:\/\/[^\s<>"')\]]+/g))||[];
@@ -2938,7 +3008,7 @@ function renderQuick(){
   if(gConnected()){
     const gBtn=el("button","lib-act", GSYNC.busy?"⏳ G…":"🔄 G");
     gBtn.title="Sincronizar Google Tasks + Calendar";
-    gBtn.onclick=()=>{ gBtn.textContent="⏳ G…"; syncGoogleTasks(true); syncCalendar(true); };
+    gBtn.onclick=()=>{ gBtn.textContent="⏳ G…"; syncGoogleTasks(true); syncCalendar(true); drivePull().catch(()=>{}); };
     btns.appendChild(gBtn);
   } else {
     const gBtn=el("button","lib-act","🔗 Conectar Google");
@@ -2946,7 +3016,7 @@ function renderQuick(){
     gBtn.title="Un clic: autoriza Tasks + Calendar y listo para siempre";
     gBtn.onclick=async()=>{
       gBtn.textContent="⏳ Conectando…";
-      try{ await gConnect(true); await Promise.all([syncGoogleTasks(true), syncCalendar(true)]); renderQuick(); }
+      try{ await gConnect(true); await Promise.all([syncGoogleTasks(true), syncCalendar(true)]); await drivePull().catch(()=>{}); renderQuick(); }
       catch(e){ GSYNC.err="No pude conectar: "+e.message; renderQuick(); }
     };
     btns.appendChild(gBtn);
@@ -3229,7 +3299,7 @@ function gRequest(promptMode){
   return new Promise((res,rej)=>{
     if(!window.google||!google.accounts){ rej(new Error("No cargó Google Identity (¿sin internet?)")); return; }
     if(!gTokenClient) gTokenClient=google.accounts.oauth2.initTokenClient({
-      client_id:gClientId(), scope:"https://www.googleapis.com/auth/tasks https://www.googleapis.com/auth/calendar.readonly", callback:()=>{} });
+      client_id:gClientId(), scope:"https://www.googleapis.com/auth/tasks https://www.googleapis.com/auth/calendar.readonly https://www.googleapis.com/auth/drive.appdata", callback:()=>{} });
     gTokenClient.callback=(resp)=>{
       if(resp.error){ rej(new Error(resp.error)); return; }
       saveStore("gtoken",{token:resp.access_token, exp:Date.now()+((resp.expires_in||3600)-60)*1000});
@@ -3596,7 +3666,7 @@ async function openRitual(opts={}){
       $("#panelBody").querySelectorAll(".goal-chip").forEach(x=>x.classList.toggle("sel", metas[+x.dataset.g]===goalSel));
     });
     $("#gEdit").onclick=editGoals;
-    $("#ritSkip").onclick=()=>{ localStorage.setItem("nitido-planday",planFor); closePanel(); };
+    $("#ritSkip").onclick=()=>{ localStorage.setItem("nitido-planday",planFor); syncMark(); closePanel(); };
     $("#ritNext").onclick=()=>{
       const nv=$("#ritNew").value.trim();
       if(nv){ const t={txt:nv, done:false, abcde:"A", created:hoy, snooze:null}; Q.items.unshift(t);
@@ -3627,7 +3697,7 @@ async function openRitual(opts={}){
 
   const terminar=()=>{ // cierre del ritual: sin paso de horas (se asignan a mano con 🕘 si quieres)
     if(pickAM) pickAM.goal=goalSel||null;
-    save(); localStorage.setItem("nitido-planday",planFor); closePanel();
+    save(); localStorage.setItem("nitido-planday",planFor); syncMark(); closePanel();
     const st=loadStore("stats"); st.plans=(st.plans||0)+1; saveStore("stats",st); recordReview();
     focusKindTab("quick"); confetti();
   };
@@ -4109,14 +4179,23 @@ refreshBadges();
 renderQuick();
 
 // 🔗 Google Tasks frescos al abrir (si está conectado)
-if(gClientId() && gConnected()) setTimeout(()=>{ syncGoogleTasks(true); syncCalendar(true); }, 300);
+if(gClientId() && gConnected()) setTimeout(()=>{
+  // orden importa: primero baja el espejo (Drive), después funde Google Tasks/Calendar
+  drivePull().catch(()=>{}).finally(()=>{ syncGoogleTasks(true); syncCalendar(true); });
+}, 300);
+else SY.ready=true; // sin Google no hay espejo: uso local normal
 
 // 🐸 el ritual te recibe cada mañana (si aún no planificaste hoy)
 setTimeout(()=>{
   // el popup aparece SOLO si falta algo: sin AM/PM → elegir; con AM/PM pero tareas sin letra → solo prioridades
-  const n=ritualNeeds();
-  if(n.faltaTops && !planningDone()) openRitual();            // "Hoy no" se respeta
-  else if(!n.faltaTops && n.sinLetra) openRitual({soloPrioridades:true});
+  const decide=()=>{
+    const n=ritualNeeds();
+    if(n.faltaTops && !planningDone()) openRitual();            // "Hoy no" se respeta
+    else if(!n.faltaTops && n.sinLetra) openRitual({soloPrioridades:true});
+  };
+  // si hay espejo en Drive, primero se aplica lo remoto (para no preguntar lo ya decidido en otro equipo)
+  if(gClientId() && gConnected()) drivePull().catch(()=>{}).finally(decide);
+  else decide();
 }, 900);
 
 // 💾 Respaldo automático diario del cerebro a disco (via server.py → carpeta backups/)
