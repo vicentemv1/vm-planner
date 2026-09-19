@@ -807,6 +807,10 @@
   .lang-tg{margin-left:auto;border:1px solid var(--line);background:var(--card);border-radius:999px;padding:5px 13px;
     font-size:11.5px;font-weight:800;letter-spacing:.6px;cursor:pointer;color:var(--ink-soft);flex:0 0 auto}
   .lang-tg:hover{border-color:var(--accent);color:var(--accent)}
+  .j-entry .n-rowdel{flex:0 0 auto;opacity:0;width:24px;height:24px;display:grid;place-items:center;border-radius:7px;cursor:pointer}
+  .j-entry:hover .n-rowdel{opacity:.6}
+  .j-entry .n-rowdel:hover{opacity:1;color:var(--down)}
+  @media(hover:none){ .j-entry .n-rowdel{opacity:.45} }
   /* móvil: sin hover, las acciones deben verse siempre */
   @media(hover:none){ .t-row .t-act,.rt-row .t-act{opacity:.5} }
   @media(max-width:700px){
@@ -2694,8 +2698,16 @@ function renderJournal(){ // 📚 biblioteca de notas: carpetas + buscador
         const row=el("div","j-entry");
         row.innerHTML=`<span class="jd">${esc(n.tit||tr("(sin título)","(untitled)"))}</span>
           <span class="jp">${esc(trim(stripTags(n.html||"").replace(/\s+/g," "),80))}</span>
-          <span class="q-sub" style="font-size:11px;flex:0 0 auto">${esc(n.d||"")}</span>`;
+          <span class="q-sub" style="font-size:11px;flex:0 0 auto">${esc(n.d||"")}</span>
+          <span class="t-act n-rowdel" title="${tr("Eliminar nota","Delete note")}">✕</span>`;
         row.onclick=()=>openNote(n.id);
+        row.querySelector(".n-rowdel").onclick=e=>{
+          e.stopPropagation();
+          if(!confirm(tr("¿Eliminar","Delete")+" “"+(n.tit||tr("(sin título)","(untitled)"))+"”?")) return;
+          N.list=N.list.filter(x=>x.id!==n.id); saveStore("notes",N);
+          toastMini("🗑 "+tr("Nota eliminada","Note deleted"));
+          draw(sr.value);
+        };
         listBox.appendChild(row);
       });
     });
