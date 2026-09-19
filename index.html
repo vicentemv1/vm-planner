@@ -807,6 +807,14 @@
   .lang-tg{margin-left:auto;border:1px solid var(--line);background:var(--card);border-radius:999px;padding:5px 13px;
     font-size:11.5px;font-weight:800;letter-spacing:.6px;cursor:pointer;color:var(--ink-soft);flex:0 0 auto}
   .lang-tg:hover{border-color:var(--accent);color:var(--accent)}
+  .q-add{display:flex;gap:8px;align-items:stretch}
+  .q-add input{flex:1;min-width:0}
+  .mic-btn{flex:0 0 46px;border:1px solid var(--line);background:var(--card);border-radius:12px;font-size:17px;cursor:pointer}
+  .mic-btn.rec,.lib-act.rec{background:#C0392B;color:#fff;border-color:#C0392B;animation:recpulse 1.4s infinite}
+  @keyframes recpulse{0%,100%{opacity:1}50%{opacity:.65}}
+  .dict-pill{position:fixed;bottom:22px;left:50%;transform:translateX(-50%);max-width:86vw;background:var(--ink);color:var(--paper);
+    padding:9px 16px;border-radius:999px;font-size:12.5px;font-weight:600;z-index:98;pointer-events:none;
+    white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
   .j-entry .n-rowdel{flex:0 0 auto;opacity:0;width:24px;height:24px;display:grid;place-items:center;border-radius:7px;cursor:pointer}
   .j-entry:hover .n-rowdel{opacity:.6}
   .j-entry .n-rowdel:hover{opacity:1;color:var(--down)}
@@ -814,11 +822,32 @@
   /* móvil: sin hover, las acciones deben verse siempre */
   @media(hover:none){ .t-row .t-act,.rt-row .t-act{opacity:.5} }
   @media(max-width:700px){
-    .day-chip{flex:1;text-align:center;padding:8px 4px;font-size:12.5px}
+    .day-chip{flex:1;text-align:center;padding:9px 4px;font-size:12.5px;white-space:nowrap}
     .top-row{flex-wrap:wrap}
     .top-main{flex:1 1 calc(100% - 60px)}
     .panel{border-radius:16px 16px 0 0;max-height:92dvh;align-self:flex-end}
     .overlay{align-items:flex-end}
+    /* 📱 un solo encabezado: el riel identifica la app; el brand grande sobra */
+    .brand .logo,.brand h1,.tagline{display:none}
+    .brand{margin:0 0 4px;justify-content:flex-end}
+    .wrap{padding:14px 12px 70px}
+    /* 📱 filas en dos líneas: texto arriba (ancho completo), controles abajo */
+    .t-row{flex-wrap:wrap;row-gap:6px;padding:11px 13px}
+    .t-row .box{order:-3}
+    .t-row .ab{order:-2}
+    .t-row .ttxt{order:-1;flex:1 1 calc(100% - 82px);white-space:normal;line-height:1.35}
+    .t-row .hora-chip,.t-row .age-chip,.t-row .due-chip{margin-left:0}
+    /* menos controles en pantalla chica: lo esencial */
+    .t-row .t-rut,.t-row .t-top,.t-row .hora-chip.empty{display:none}
+    .t-row .t-act{width:30px;height:30px;font-size:15px}
+    .q-foot{flex-wrap:wrap;gap:8px}
+    .energy-top{font-size:10.5px}
+    .stats-top{grid-template-columns:repeat(2,1fr)}
+  }
+  /* zonas seguras iPhone (notch / barra inferior) */
+  @supports(padding:max(0px)){
+    body{padding-left:max(0px, env(safe-area-inset-left));padding-right:max(0px, env(safe-area-inset-right))}
+    .rail{padding-top:max(8px, env(safe-area-inset-top))}
   }
   .rit-opt{display:flex;gap:11px;align-items:center;padding:12px 15px;border:1.5px solid var(--line);
     border-radius:12px;background:var(--card);margin-bottom:9px;cursor:pointer;transition:.12s}
@@ -2602,6 +2631,33 @@ function toastMini(msg){
   setTimeout(()=>t.classList.add("on"),10);
   setTimeout(()=>{ t.classList.remove("on"); setTimeout(()=>t.remove(),300); },1900);
 }
+/* 🎤 Dictado por voz (Web Speech, gratis, sin API): tareas y notas por audio.
+   "Ilimitado": el reconocedor se reinicia solo cada vez que el navegador lo corta. */
+function mkDictado(onText){
+  const SR=window.SpeechRecognition||window.webkitSpeechRecognition;
+  if(!SR) return null;
+  const rec=new SR();
+  rec.lang = LANG()==="en" ? "en-US" : "es-CL";
+  rec.continuous=true; rec.interimResults=true;
+  let active=false;
+  rec.onresult=e=>{
+    let interim="";
+    for(let i=e.resultIndex;i<e.results.length;i++){
+      const r=e.results[i];
+      if(r.isFinal) onText(r[0].transcript.trim(), true);
+      else interim+=r[0].transcript;
+    }
+    if(interim.trim()) onText(interim.trim(), false);
+  };
+  rec.onend=()=>{ if(active){ try{ rec.start(); }catch{} } }; // sigue escuchando sin límite
+  rec.onerror=ev=>{ if(ev.error==="not-allowed"){ active=false; toastMini(tr("🎤 Permite el micrófono en el navegador","🎤 Allow the microphone")); } };
+  return {
+    start(){ active=true; try{ rec.start(); }catch{} },
+    stop(){ active=false; try{ rec.stop(); }catch{} },
+    get active(){ return active; }
+  };
+}
+
 /* ☁️ Espejo entre dispositivos vía Google Drive (carpeta oculta de la app):
    la capa local (importantes AM/PM, letras, rutinas, metas, notas, historial, energía)
    viaja contigo — mismo login de Google = mismo estado en Mac, prod y celular. */
@@ -2876,9 +2932,31 @@ function openNote(id){
   const words=()=>{ const t=ta.textContent.trim(); return (t? t.split(/\s+/).length:0)+" "+tr("palabras","words"); };
   const esLocal=["localhost","127.0.0.1"].includes(location.hostname); // el puente a Apple Notes vive en el Mac
   meta.innerHTML=`<span class="j-words">${words()}</span><span><span class="j-saved" style="opacity:0">✓ ${tr("Guardado","Saved")}</span>
-    ${esLocal?`<button class="lib-act" id="jApple" style="margin-left:10px" title="Crea la nota en Apple Notes — llega a tu iPhone por iCloud">📲 iPhone</button>`:""}
+    <button class="lib-act" id="jMic" style="margin-left:10px" title="${tr("Transcribir en vivo (reuniones): habla y se escribe solo","Live transcription: speak and it types itself")}">🎤 ${tr("Dictar","Dictate")}</button>
+    ${esLocal?`<button class="lib-act" id="jApple" style="margin-left:6px" title="Crea la nota en Apple Notes — llega a tu iPhone por iCloud">📲 iPhone</button>`:""}
     <button class="lib-act" id="jAnalyze" style="margin-left:6px">✨ ${tr("Hacer nítido","Make it crisp")}</button></span>`;
   root.appendChild(meta);
+  // 🎤 transcripción en vivo para reuniones: lo definitivo se escribe en la nota; lo provisorio flota abajo
+  (()=>{
+    const mb=meta.querySelector("#jMic");
+    let dict=null, pill=null;
+    const stopUI=()=>{ mb.classList.remove("rec"); mb.innerHTML="🎤 "+tr("Dictar","Dictate"); if(pill){pill.remove();pill=null;} };
+    mb.onclick=()=>{
+      if(dict && dict.active){ dict.stop(); stopUI(); return; }
+      dict = dict || mkDictado((txt,fin)=>{
+        if(fin){
+          ta.innerHTML += (ta.textContent.trim()?" ":"") + esc(txt);
+          n.html=ta.innerHTML; saveN();
+          meta.querySelector(".j-words").textContent=words();
+          if(pill) pill.textContent="🎙 …";
+        } else if(pill) pill.textContent="🎙 "+txt.slice(-90);
+      });
+      if(!dict){ toastMini(tr("Dictado no disponible en este navegador","Dictation not available in this browser")); return; }
+      dict.start();
+      mb.classList.add("rec"); mb.innerHTML="⏺ "+tr("Grabando… tocar para parar","Recording… tap to stop");
+      pill=el("div","dict-pill","🎙 …"); document.body.appendChild(pill);
+    };
+  })();
   ta.addEventListener("input",()=>{
     meta.querySelector(".j-words").textContent=words();
     clearTimeout(_jT);
@@ -3035,7 +3113,7 @@ function renderQuick(){
   const pendDay=n=>Q.items.filter(t=>!t.done&&!isRoutine(t)&&enDia(t,n)).length;
   const dayRow=el("div","q-filters");
   dayRow.style.cssText="display:flex;gap:7px;flex-wrap:wrap;align-items:center;margin:4px 0 12px";
-  [[tr("Hoy","Today"),0],[tr("Mañana","Tomorrow"),1],[tr("Pasado mañana","Day after"),2]].forEach(([lb,n])=>{
+  [[tr("Hoy","Today"),0],[tr("Mañana","Tomorrow"),1],[tr("Pasado","Day after"),2]].forEach(([lb,n])=>{
     const cnt=pendDay(n);
     const c=el("button","day-chip"+(QDAYF===n?" sel":""), lb+(cnt?` · ${cnt}`:""));
     c.onclick=()=>{ QDAYF=n; renderQuick(); };
@@ -3097,8 +3175,24 @@ function renderQuick(){
     root.appendChild(tc);
   }
   const add=el("div","q-add");
-  add.innerHTML=`<input type="text" id="qNew" placeholder="${tr("Escribe y Enter…  (! al inicio = prioridad A)","Type and Enter…  (! prefix = A priority)")}">`;
+  add.innerHTML=`<input type="text" id="qNew" placeholder="${tr("Escribe y Enter…  (! al inicio = prioridad A)","Type and Enter…  (! prefix = A priority)")}">
+    <button class="mic-btn" id="micTask" title="${tr("Dictar tarea","Dictate task")}">🎤</button>`;
   root.appendChild(add);
+  // 🎤 dictar una tarea: habla, se escribe en el campo, Enter y listo
+  (()=>{
+    const mb=add.querySelector("#micTask"); const inp0=add.querySelector("#qNew");
+    let dict=null;
+    mb.onclick=()=>{
+      if(dict && dict.active){ dict.stop(); mb.classList.remove("rec"); mb.textContent="🎤"; inp0.focus(); return; }
+      dict = dict || mkDictado((txt,fin)=>{
+        if(fin){ inp0.value=(inp0.value?inp0.value+" ":"")+txt; inp0.dataset.base=inp0.value; }
+        else inp0.value=(inp0.dataset.base||"")+(inp0.dataset.base?" ":"")+txt;
+      });
+      if(!dict){ toastMini(tr("Dictado no disponible en este navegador","Dictation not available in this browser")); return; }
+      inp0.dataset.base=inp0.value;
+      dict.start(); mb.classList.add("rec"); mb.textContent="⏺";
+    };
+  })();
   const filtRow=el("div","q-filters"); filtRow.style.cssText="display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin:2px 0 8px";
   root.appendChild(filtRow);
   const list=el("div","checklist"); root.appendChild(list);
