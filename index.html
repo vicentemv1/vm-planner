@@ -3260,12 +3260,13 @@ function renderQuick(){
         </div>
         ${t.done?`<span class="top-hora" style="background:transparent">✓</span>`:`
         ${t.hora?`<span class="top-hora">${esc(t.hora)}</span>`:""}
-        <button class="lib-act top-go" title="${tr("25 min de foco","25 min focus")}">▶ 25’</button>
+        <button class="lib-act top-go" data-m="25" title="${tr("25 min de foco","25 min focus")}">▶ 25’</button>
+        <button class="lib-act top-go" data-m="45" title="${tr("45 min de foco","45 min focus")}">▶ 45’</button>
         <button class="lib-act top-done">✓ ${tr("Hecha","Done")}</button>`}
       </div>`).join("");
     tc.querySelectorAll(".top-row").forEach(row=>{
       const t=tops[+row.dataset.i];
-      const go=row.querySelector(".top-go"); if(go) go.onclick=()=>startFocus((t.top==="AM"?"☀️ ":"🌇 ")+t.txt, 25);
+      row.querySelectorAll(".top-go").forEach(go=>go.onclick=()=>startFocus((t.top==="AM"?"☀️ ":"🌇 ")+t.txt, +go.dataset.m));
       const dn=row.querySelector(".top-done"); if(dn) dn.onclick=()=>{ t.done=true; t.doneAt=hoy;
         const st=loadStore("stats"); st.frogs=(st.frogs||0)+1; st.done=(st.done||0)+1; saveStore("stats",st); recordReview();
         todayBump(t.top==="AM"?"am":"pm",1); archiveAdd(t);
