@@ -818,6 +818,9 @@
   .j-entry .n-rowdel{flex:0 0 auto;opacity:0;width:24px;height:24px;display:grid;place-items:center;border-radius:7px;cursor:pointer}
   .j-entry:hover .n-rowdel{opacity:.6}
   .j-entry .n-rowdel:hover{opacity:1;color:var(--down)}
+  .td-meta{display:flex;align-items:center;gap:9px;flex-wrap:wrap;margin-top:14px;position:relative}
+  .td-lb{font-size:11px;font-weight:800;letter-spacing:.6px;color:var(--ink-soft);text-transform:uppercase}
+  .td-meta .td-lb:not(:first-child){margin-left:8px}
   @media(hover:none){ .j-entry .n-rowdel{opacity:.45} }
   /* móvil: sin hover, las acciones deben verse siempre */
   @media(hover:none){ .t-row .t-act,.rt-row .t-act{opacity:.5} }
@@ -2824,12 +2827,25 @@ async function drivePull(){
 setInterval(()=>{ drivePull().catch(()=>{}); }, 60000);
 document.addEventListener("visibilitychange",()=>{ if(!document.hidden) drivePull().catch(()=>{}); });
 
-/* 🔗 detalle de tarea: título editable + contexto con links clickeables (Gmail, WhatsApp, Docs…) */
+/* 🔗 detalle de tarea: TODO en un lugar — título, descripción (sincronizada con Google),
+   prioridad, fecha, hora y categoría. Los links de la descripción quedan clickeables. */
 function openTaskDetail(t, save, after){
   const links=()=> (String(t.ctx||"").match(/https?:\/\/[^\s<>"')\]]+/g))||[];
+  const hoy=todayStr();
+  const fecha=()=> t.due||t.snooze||null;
+  const ctxOrig=t.ctx||"";
   showPanel(tr("Detalle de tarea","Task details"), `
     <input class="lib-search" id="tdTxt" value="${esc(t.txt)}" style="font-weight:700;font-size:15px">
-    <p class="q-sub" style="margin:12px 0 6px;font-size:12px">${tr("Contexto: pega links (Gmail, WhatsApp, Docs, Figma…) o apuntes — los links quedan clickeables.","Context: paste links (Gmail, WhatsApp, Docs…) or notes — links become clickable.")}</p>
+    <div class="td-meta">
+      <span class="td-lb">${tr("Prioridad","Priority")}</span>
+      <span class="rit-abcde" id="tdAb">${["A","B","C","D"].map(L=>`<span class="ab ${t.abcde===L?"ab-"+L:"ab-x"}" data-l="${L}">${L}</span>`).join("")}</span>
+      <span class="td-lb">${tr("Fecha","Date")}</span>
+      <button class="lib-act" id="tdDate" style="position:relative">📅 ${fecha()?fmtDia(fecha()):tr("hoy","today")}</button>
+      <span class="td-lb">${tr("Hora","Time")}</span>
+      <input type="time" id="tdHora" class="lib-act" style="padding:5px 9px" value="${esc(t.hora||"")}">
+      ${t.glistName?`<span class="td-lb">${tr("Lista","List")}</span><span class="cat-pill cp-todo" title="${tr("La lista se cambia en Google Tasks","Change the list in Google Tasks")}">${esc(t.glistName)}</span>`:""}
+    </div>
+    <p class="q-sub" style="margin:14px 0 6px;font-size:12px">${tr("Descripción — se sincroniza con Google Tasks. Pega links (Gmail, WhatsApp, Docs…): quedan clickeables.","Description — syncs with Google Tasks. Paste links: they become clickable.")}</p>
     <textarea id="tdCtx" class="lib-search" style="min-height:120px;resize:vertical;font-family:inherit;line-height:1.6">${esc(t.ctx||"")}</textarea>
     <div id="tdLinks" style="display:flex;gap:6px;flex-wrap:wrap;margin-top:10px"></div>
     <div class="rit-foot"><span></span>
@@ -2839,7 +2855,21 @@ function openTaskDetail(t, save, after){
   paint();
   $("#tdCtx").oninput=e=>{ t.ctx=e.target.value; save(); paint(); };
   $("#tdTxt").onchange=e=>{ const nv=e.target.value.trim(); if(nv && nv!==t.txt){ t.txt=nv; save(); if(t.gid) gPush(t,{title:nv}); } };
-  $("#tdOk").onclick=()=>{ closePanel(); after(); };
+  $("#tdAb").querySelectorAll(".ab").forEach(b=>b.onclick=()=>{
+    t.abcde = t.abcde===b.dataset.l ? null : b.dataset.l; save();
+    $("#tdAb").querySelectorAll(".ab").forEach(x=>x.className="ab "+(t.abcde===x.dataset.l?"ab-"+x.dataset.l:"ab-x"));
+  });
+  $("#tdDate").onclick=e=>{ e.stopPropagation();
+    datePop($("#tdDate").parentElement, fecha(), v=>{
+      t.snooze = v>hoy ? v : null; t.due=v; save(); gSetDue(t,v);
+      $("#tdDate").innerHTML="📅 "+(v>hoy?fmtDia(v):tr("hoy","today"));
+    });
+  };
+  $("#tdHora").onchange=e=>{ t.hora=e.target.value||null; save(); };
+  $("#tdOk").onclick=()=>{
+    if((t.ctx||"")!==ctxOrig && t.gid) gPush(t,{notes:t.ctx||""}); // descripción → Google
+    closePanel(); after();
+  };
 }
 /* 🗂 Historial: calendario de tareas hechas + buscador de antiguas */
 let ARCH_M=null;
@@ -3310,7 +3340,7 @@ function renderQuick(){
     const ageChip=(!t.done&&age>0)?`<span class="age-chip ${age===1?"age-1":"age-2"}">${age===1?"ayer":"hace "+age+" días"}</span>`:"";
     row.innerHTML=`<span class="box" title="${t.done?"Reabrir":"Completar"}"></span>
       <span class="ab ${t.abcde?"ab-"+t.abcde:"ab-x"}" title="Prioridad ABCDE (clic para cambiar)">${t.abcde||"·"}</span>
-      <span class="ttxt" title="${tr("Abrir detalle (links, contexto)","Open details (links, context)")}">${t.top==="AM"?"☀️ ":t.top==="PM"?"🌇 ":""}${esc(t.txt)}${/https?:\/\//.test(t.ctx||"")?' <span class="lnk-ind">🔗</span>':""}${t.gid?` <span class="g-badge" title="Google Tasks · ${esc(t.glistName||"")}">G</span>`:""}${t.abcde==="D"?" <span style=\'font-size:11px;color:#4F86C6;font-weight:700\'>· delegar</span>":""}</span>
+      <span class="ttxt" title="${tr("Abrir detalle (links, contexto)","Open details (links, context)")}">${t.top==="AM"?"☀️ ":t.top==="PM"?"🌇 ":""}${esc(t.txt)}${/https?:\/\//.test(t.ctx||"")?' <span class="lnk-ind">🔗</span>':(t.ctx||"").trim()?' <span class="lnk-ind">📝</span>':""}${t.gid?` <span class="g-badge" title="Google Tasks · ${esc(t.glistName||"")}">G</span>`:""}${t.abcde==="D"?" <span style=\'font-size:11px;color:#4F86C6;font-weight:700\'>· delegar</span>":""}</span>
       ${t.hora&&!t.done?`<span class="hora-chip" title="Cambiar hora">🕘 ${esc(t.hora)}</span>`:(!t.done?`<span class="hora-chip empty" title="Asignar hora">🕘 hora</span>`:"")}
       ${ageChip}
       ${snoozed&&fechaDe(t)?`<span class="due-chip t-cal" title="Cambiar fecha" style="cursor:pointer">📅 ${fmtDia(fechaDe(t))}</span>`:""}
@@ -3563,7 +3593,7 @@ async function syncGoogleTasks(force){
         if(!rt.ok){ ok=false; break; }
         const j=await rt.json();
         (j.items||[]).forEach(t=>{ if(t.title&&t.title.trim())
-          remote.push({gid:t.id, glist:l.id, glistName:l.title, title:t.title.trim(), status:t.status, due:t.due}); });
+          remote.push({gid:t.id, glist:l.id, glistName:l.title, title:t.title.trim(), status:t.status, due:t.due, notes:t.notes||""}); });
         pageTok=j.nextPageToken||""; pages++;
       }while(pageTok && pages<5);
       return ok;
@@ -3587,13 +3617,15 @@ async function syncGoogleTasks(force){
         loc.txt=rt.title; loc.glist=rt.glist; loc.glistName=rt.glistName;
         // la fecha de Google manda SIEMPRE (auto-repara desfases): futura → aplazada hasta ese día
         if(!("due" in pendLocal)){ loc.due=d; loc.snooze = (d && d>hoy) ? d : null; }
+        // la descripción de Google = el contexto de la tarea (dos vías)
+        if(!("notes" in pendLocal) && (rt.notes||"")!==(loc.ctx||"")) loc.ctx=rt.notes||"";
         if(!("status" in pendLocal)){
           if(rt.status==="completed" && !loc.done){ loc.done=true; loc.doneAt=hoy; }
           else if(rt.status!=="completed" && loc.done){ loc.done=false; loc.doneAt=null; }
         }
       } else if(rt.status!=="completed" && !hidden.has(rt.gid)){
         Q.items.push({txt:rt.title, done:false, created: (d && d<=hoy) ? d : hoy,
-          snooze: (d && d>hoy) ? d : null, due:d, abcde:null, gid:rt.gid, glist:rt.glist, glistName:rt.glistName});
+          snooze: (d && d>hoy) ? d : null, due:d, abcde:null, ctx:rt.notes||"", gid:rt.gid, glist:rt.glist, glistName:rt.glistName});
       }
     });
     // si desapareció en Google (borrada allá), sale de aquí también —
