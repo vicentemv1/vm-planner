@@ -844,10 +844,29 @@
     .energy-top{font-size:10.5px}
     .stats-top{grid-template-columns:repeat(2,1fr)}
   }
-  /* zonas seguras iPhone (notch / barra inferior) */
+  /* zonas seguras iPhone (notch / barra inferior) — SOLO en móvil: en desktop el body necesita su padding del riel */
   @supports(padding:max(0px)){
-    body{padding-left:max(0px, env(safe-area-inset-left));padding-right:max(0px, env(safe-area-inset-right))}
-    .rail{padding-top:max(8px, env(safe-area-inset-top))}
+    @media(max-width:700px){
+      body{padding-left:max(0px, env(safe-area-inset-left));padding-right:max(0px, env(safe-area-inset-right))}
+      .rail{padding-top:max(8px, env(safe-area-inset-top))}
+    }
+  }
+  /* ☰ riel colapsable */
+  .rail{transition:transform .22s ease}
+  body{transition:padding-left .22s ease}
+  .rail-hide{border:none;background:transparent;font-size:16px;color:var(--ink-soft);cursor:pointer;
+    padding:7px;border-radius:9px;margin-bottom:6px;flex:0 0 auto}
+  .rail-hide:hover{background:var(--paper-2);color:var(--ink)}
+  body.norail .rail{transform:translateX(-110%)}
+  body.norail{padding-left:0}
+  .rail-show{position:fixed;top:max(12px, env(safe-area-inset-top));left:12px;z-index:41;display:none;
+    width:40px;height:40px;border-radius:12px;border:1px solid var(--line);background:var(--card);
+    box-shadow:var(--shadow);font-size:16px;cursor:pointer;place-items:center;color:var(--ink)}
+  body.norail .rail-show{display:grid}
+  body.norail .brand{margin-left:46px}
+  @media(max-width:700px){
+    body.norail .rail{display:none;transform:none}
+    .rail-hide{margin:0 2px 0 0;padding:6px}
   }
   .rit-opt{display:flex;gap:11px;align-items:center;padding:12px 15px;border:1.5px solid var(--line);
     border-radius:12px;background:var(--card);margin-bottom:9px;cursor:pointer;transition:.12s}
@@ -998,6 +1017,7 @@
 </head>
 <body>
 <nav class="rail">
+  <button class="rail-hide" id="railHide" title="Ocultar barra">☰</button>
   <div class="rail-logo">VM</div>
   <button class="rail-btn" id="openRitualBtn" title="Planificar mi día (2 importantes + ABCDE + horas)"><span class="r-ic">🐸</span><span class="r-lb">Mi día</span></button>
   <button class="rail-btn" id="openQuick" title="Tus tareas de hoy"><span class="r-ic">⚡</span><span class="r-lb">Hoy</span><span class="r-bg warm" id="quickBadge">0</span></button>
@@ -1007,6 +1027,7 @@
   <button class="rail-btn" id="openStats" title="Tu productividad"><span class="r-ic">🔥</span><span class="r-lb">Progreso</span><span class="r-bg" id="streakBadge">0</span></button>
   <button class="rail-btn" id="darkToggle" title="Modo claro/oscuro"><span class="r-ic">🌙</span><span class="r-lb">Tema</span></button>
 </nav>
+<button class="rail-show" id="railShow" title="Mostrar barra">☰</button>
 <div class="wrap">
   <div class="brand">
     <div class="logo">VM</div>
@@ -4307,6 +4328,14 @@ setTimeout(()=>{
 })();
 
 
+// ☰ riel colapsable (preferencia recordada)
+(function railBoot(){
+  const set=on=>{ document.body.classList.toggle("norail",!on); localStorage.setItem("nitido-rail",on?"1":"0"); };
+  const h=$("#railHide"), s=$("#railShow");
+  if(h) h.onclick=()=>set(false);
+  if(s) s.onclick=()=>set(true);
+  if(localStorage.getItem("nitido-rail")==="0") document.body.classList.add("norail");
+})();
 // 🌐 toggle ES/EN (arriba a la derecha)
 (function langBoot(){
   const b=$("#langTg"); if(!b) return;
