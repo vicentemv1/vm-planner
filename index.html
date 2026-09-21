@@ -1013,6 +1013,83 @@
   .sr-tag.card{background:var(--warm-soft);color:var(--warm)}
 
   .foot{text-align:center;color:var(--ink-soft);opacity:.7;font-size:12px;margin-top:36px}
+
+  /* ---------- 🔀 Flujos ---------- */
+  .fl-bar{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin:2px 0 8px}
+  .fl-bar .fl-right{margin-left:auto;display:flex;gap:8px}
+  .fl-seg{display:inline-flex;background:var(--paper-2);border:1px solid var(--line);border-radius:11px;padding:3px}
+  .fl-seg button{border:none;background:transparent;color:var(--ink-soft);font-weight:600;font-size:13px;
+    padding:6px 14px;border-radius:8px;cursor:pointer;transition:.15s;font-family:inherit}
+  .fl-seg button.on{background:var(--card);color:var(--ink);box-shadow:var(--shadow)}
+  .fl-hint{color:var(--ink-soft);font-size:12px;margin:0 0 12px 2px}
+  .fl-wrap{position:relative;height:72vh;min-height:460px;border:1px solid var(--line);border-radius:var(--radius);
+    overflow:hidden;background:var(--card);touch-action:none;
+    background-image:radial-gradient(var(--line) 1px,transparent 1px);background-size:24px 24px}
+  .fl-wrap.panning{cursor:grabbing}
+  .fl-plane{position:absolute;top:0;left:0;width:6000px;height:4000px;transform-origin:0 0}
+  .fl-edges{position:absolute;top:0;left:0;width:6000px;height:4000px;pointer-events:none;overflow:visible}
+  .fl-edge{fill:none;stroke:var(--ink-soft);stroke-width:2;stroke-linecap:round;stroke-linejoin:round;transition:stroke .12s}
+  .fl-edge.sel{stroke:var(--accent);stroke-width:2.5}
+  .fl-hit{fill:none;stroke:transparent;stroke-width:18;pointer-events:stroke;cursor:pointer}
+  .fl-elabel{position:absolute;transform:translate(-50%,-50%);background:var(--card);border:1px solid var(--line);
+    border-radius:7px;padding:1px 8px;font-size:12px;color:var(--ink);font-weight:600;white-space:nowrap;
+    outline:none;cursor:text;box-shadow:0 1px 3px rgba(0,0,0,.06)}
+  .fl-node{position:absolute;box-sizing:border-box;min-width:88px;max-width:280px;padding:12px 16px;background:var(--card);
+    border:1.5px solid var(--ink);border-radius:13px;font-size:14px;font-weight:600;color:var(--ink);line-height:1.35;
+    text-align:center;cursor:grab;user-select:none;box-shadow:var(--shadow);
+    transition:box-shadow .15s cubic-bezier(.2,.8,.2,1),border-color .15s,transform .12s;
+    display:flex;align-items:center;justify-content:center}
+  .fl-node:hover{box-shadow:0 2px 6px rgba(0,0,0,.08),0 12px 30px rgba(0,0,0,.09)}
+  .fl-node.sel{border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-soft),0 10px 26px rgba(0,0,0,.10)}
+  .fl-node.editing{cursor:text;user-select:text}
+  .fl-node .fl-txt{outline:none;white-space:pre-wrap;word-break:break-word;width:100%}
+  .fl-node.dragging{cursor:grabbing;box-shadow:0 16px 40px rgba(0,0,0,.20);transition:none}
+  .fl-node.pill{border-radius:999px}
+  .fl-node.diamond{border:none;background:transparent;box-shadow:none;padding:24px 30px;min-width:104px;
+    filter:drop-shadow(0 1px 3px rgba(0,0,0,.06)) drop-shadow(0 8px 20px rgba(0,0,0,.07))}
+  .fl-node.diamond::before{content:"";position:absolute;inset:-1.5px;background:var(--ink);
+    clip-path:polygon(50% 0,100% 50%,50% 100%,0 50%)}
+  .fl-node.diamond::after{content:"";position:absolute;inset:0;background:var(--card);
+    clip-path:polygon(50% 0,100% 50%,50% 100%,0 50%)}
+  .fl-node.diamond.sel::before{background:var(--accent)}
+  .fl-node.diamond .fl-txt{position:relative;z-index:1}
+  body.dark .fl-node.diamond::before{background:#EDEDF0}
+  .fl-node.mind{border:1.5px solid transparent;background:var(--accent-soft);color:var(--accent);border-radius:999px;
+    box-shadow:0 1px 3px rgba(0,0,0,.05),0 6px 18px rgba(0,0,0,.06);font-weight:650}
+  .fl-node.mind.sel{border-color:var(--accent)}
+  .fl-node.mind.root{background:var(--ink);color:var(--paper);font-size:15.5px;font-weight:700}
+  .fl-handle{position:absolute;width:14px;height:14px;border-radius:999px;background:var(--accent);
+    border:2.5px solid var(--card);opacity:0;transition:opacity .12s,transform .12s;cursor:crosshair;z-index:6;box-shadow:0 1px 3px rgba(0,0,0,.2)}
+  .fl-handle:hover{transform:scale(1.35)}
+  .fl-h-t{top:-8px;left:50%;margin-left:-7px} .fl-h-b{bottom:-8px;left:50%;margin-left:-7px}
+  .fl-h-l{left:-8px;top:50%;margin-top:-7px} .fl-h-r{right:-8px;top:50%;margin-top:-7px}
+  .fl-node:hover .fl-handle,.fl-node.sel .fl-handle{opacity:1}
+  .fl-resize{position:absolute;right:-5px;bottom:-5px;width:14px;height:14px;border-radius:4px;background:var(--card);
+    border:1.5px solid var(--accent);cursor:nwse-resize;opacity:0;transition:opacity .12s;z-index:6}
+  .fl-node.sel .fl-resize{opacity:1}
+  .fl-tools{position:absolute;z-index:9;display:flex;gap:2px;background:var(--card);border:1px solid var(--line);
+    border-radius:11px;padding:4px;box-shadow:0 8px 26px rgba(0,0,0,.16);transform:translateY(-6px)}
+  .fl-tools button{border:none;background:transparent;cursor:pointer;font-size:15px;width:32px;height:32px;
+    border-radius:8px;color:var(--ink);transition:.12s;display:grid;place-items:center}
+  .fl-tools button:hover{background:var(--paper-2)}
+  .fl-tools button.on{background:var(--accent-soft);color:var(--accent)}
+  .fl-tools button.del{color:#C0392B}
+  .fl-tools .sep{width:1px;background:var(--line);margin:3px 3px}
+  .fl-zoom{position:absolute;right:14px;bottom:14px;z-index:10;display:flex;align-items:center;gap:2px;
+    background:var(--card);border:1px solid var(--line);border-radius:11px;padding:3px;box-shadow:var(--shadow)}
+  .fl-zoom button{border:none;background:transparent;cursor:pointer;font-size:15px;width:30px;height:30px;border-radius:8px;color:var(--ink)}
+  .fl-zoom button:hover{background:var(--paper-2)}
+  .fl-zoom .lvl{font-size:12px;color:var(--ink-soft);min-width:40px;text-align:center;font-variant-numeric:tabular-nums;cursor:pointer}
+  .fl-empty{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);text-align:center;color:var(--ink-soft);
+    font-size:14px;pointer-events:none;line-height:1.8;z-index:2}
+  .fl-banner{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin:0 0 12px;padding:10px 14px;
+    background:var(--accent-soft);border:1px solid var(--line);border-radius:12px;font-size:13px;font-weight:600;color:var(--accent)}
+  .fl-banner button{margin-left:0}
+  .fl-banner button.ghost{background:transparent;color:var(--ink-soft)}
+  .fl-banner span{margin-right:auto}
+  body.dark .fl-node{border-color:#EDEDF0}
+  body.dark .fl-node.mind{background:#243B33;color:#8FD9BE;border-color:transparent}
+  body.dark .fl-wrap{background-image:radial-gradient(rgba(255,255,255,.07) 1px,transparent 1px)}
 </style>
 </head>
 <body>
@@ -1023,6 +1100,7 @@
   <button class="rail-btn" id="openQuick" title="Tus tareas de hoy"><span class="r-ic">⚡</span><span class="r-lb">Hoy</span><span class="r-bg warm" id="quickBadge">0</span></button>
   <button class="rail-btn" id="openFocus" title="Sesión de trabajo profundo"><span class="r-ic">🎯</span><span class="r-lb">Foco</span></button>
   <button class="rail-btn" id="openJournal" title="Notas del día"><span class="r-ic">✍️</span><span class="r-lb">Notas</span></button>
+  <button class="rail-btn" id="openFlows" title="Flujos y mapas mentales"><span class="r-ic">🔀</span><span class="r-lb">Flujos</span></button>
   <div class="rail-spacer"></div>
   <button class="rail-btn" id="openStats" title="Tu productividad"><span class="r-ic">🔥</span><span class="r-lb">Progreso</span><span class="r-bg" id="streakBadge">0</span></button>
   <button class="rail-btn" id="darkToggle" title="Modo claro/oscuro"><span class="r-ic">🌙</span><span class="r-lb">Tema</span></button>
@@ -2682,7 +2760,7 @@ function mkDictado(onText){
 /* ☁️ Espejo entre dispositivos vía Google Drive (carpeta oculta de la app):
    la capa local (importantes AM/PM, letras, rutinas, metas, notas, historial, energía)
    viaja contigo — mismo login de Google = mismo estado en Mac, prod y celular. */
-const SYNC_KEYS=["quick","routines","goals","stats","notes","archive"];
+const SYNC_KEYS=["quick","routines","goals","stats","notes","archive","flows"];
 let SY={fileId:null, timer:null, busy:false, ready:false}; // ready: recién tras el primer pull se permite subir
 const symGet=()=>{ try{ return JSON.parse(localStorage.getItem("nitido-symeta")||'{"applied":0,"edit":0}'); }catch{ return {applied:0,edit:0}; } };
 const symSet=m=>{ try{ localStorage.setItem("nitido-symeta", JSON.stringify(m)); }catch{} };
@@ -3960,6 +4038,525 @@ function focusKindTab(kind){ // compat: el ritual y "fijar semana" siguen llaman
   else renderQuick();
 }
 
+/* ---------- 🔀 Flujos (biblioteca con carpetas + editor de lienzo) ---------- */
+let FL=null; // estado vivo del editor
+function flowUid(){ return Date.now().toString(36)+Math.random().toString(36).slice(2,6); }
+function flowsStore(){
+  const d=loadStore("flows");
+  if(Array.isArray(d.list)) return d;
+  const S={list:[], mig:1};
+  if(Array.isArray(d.nodes) && d.nodes.length){ // migrar el diagrama único antiguo a la biblioteca
+    S.list.push({id:flowUid(), name:tr("Mi primer flujo","My first flow"), fold:"", mode:d.mode||"flow",
+      nodes:d.nodes, edges:d.edges||[], view:d.view||{x:0,y:0,z:1}, up:Date.now()}); }
+  saveStore("flows",S); return S;
+}
+function decodeFlowShare(b64){
+  try{ let s=b64.replace(/-/g,"+").replace(/_/g,"/"); while(s.length%4) s+="=";
+    const o=JSON.parse(decodeURIComponent(escape(atob(s))));
+    if(o&&Array.isArray(o.n)){ // formato compacto: {m,t,n:[[x,y,text,shape,w]],e:[[from,to,label]]}
+      const nodes=o.n.map(a=>{ const n={id:flowUid(),x:+a[0]||0,y:+a[1]||0,text:a[2]||"",shape:a[3]||"rect"}; if(a[4]) n.w=+a[4]; return n; });
+      const edges=(o.e||[]).map(a=>({id:flowUid(),from:(nodes[a[0]]||{}).id,to:(nodes[a[1]]||{}).id,label:a[2]||""})).filter(e=>e.from&&e.to);
+      return {mode:o.m||"flow", name:o.t||"", nodes, edges};
+    }
+    if(o&&Array.isArray(o.nodes)) return {mode:o.mode||"flow", name:o.name||"", nodes:o.nodes, edges:o.edges||[]}; // compat viejo
+    return null;
+  }catch{ return null; }
+}
+function renderFlows(){ // 📚 biblioteca de flujos: carpetas + buscador
+  VIEW="flows"; if(typeof dockComposer==="function") dockComposer();
+  const root=$("#canvas"); root.style.display="block"; root.className=""; root.innerHTML=""; CURRENT=null;
+  // ¿venimos de un link compartido? → abrir en modo vista (no destructivo)
+  if(location.hash.indexOf("flow=")>=0){ const imp=decodeFlowShare(location.hash.split("flow=")[1].split(/[&?]/)[0]);
+    history.replaceState(null,"",location.pathname);
+    if(imp) return openFlow(null, imp); }
+  const S=flowsStore();
+  const head=el("div","j-head");
+  head.innerHTML=`<h2 class="j-date">🔀 ${tr("Flujos","Flows")}</h2>
+    <button class="btn btn-primary" id="flNew" style="padding:8px 16px;font-size:13.5px">+ ${tr("Nuevo flujo","New flow")}</button>`;
+  root.appendChild(head);
+  const sr=el("input","lib-search"); sr.placeholder=tr("Buscar en tus flujos…","Search your flows…");
+  root.appendChild(sr);
+  const listBox=el("div"); listBox.style.marginTop="6px"; root.appendChild(listBox);
+  const draw=q=>{
+    listBox.innerHTML=""; q=(q||"").toLowerCase();
+    let flows=[...S.list].sort((a,b)=>(b.up||0)-(a.up||0));
+    if(q) flows=flows.filter(f=>((f.name||"")+" "+(f.fold||"")+" "+(f.nodes||[]).map(n=>n.text).join(" ")).toLowerCase().includes(q));
+    if(!flows.length){ listBox.appendChild(el("div","lib-empty", q?tr("Nada con ese texto.","Nothing matches."):
+      tr('Tu primer flujo: "+ Nuevo flujo". Ej: Proceso de venta · Onboarding MX.','Your first flow: "+ New flow".'))); return; }
+    const sinC=tr("Sin carpeta","No folder");
+    const folds=[...new Set(flows.map(f=>f.fold||sinC))];
+    folds.forEach(fold=>{
+      listBox.appendChild(el("p","j-past-title","📁 "+fold));
+      flows.filter(f=>(f.fold||sinC)===fold).forEach(f=>{
+        const nn=(f.nodes||[]).length, ic=f.mode==="mind"?"✷":"→";
+        const row=el("div","j-entry");
+        row.innerHTML=`<span class="jd">${esc(f.name||tr("(sin título)","(untitled)"))}</span>
+          <span class="jp">${ic} ${nn} ${nn===1?tr("nodo","node"):tr("nodos","nodes")}</span>
+          <span class="q-sub" style="font-size:11px;flex:0 0 auto">${f.up?new Date(f.up).toLocaleDateString():""}</span>
+          <span class="t-act n-rowdel" title="${tr("Eliminar flujo","Delete flow")}">✕</span>`;
+        row.onclick=()=>openFlow(f.id);
+        row.querySelector(".n-rowdel").onclick=e=>{
+          e.stopPropagation();
+          if(!confirm(tr("¿Eliminar","Delete")+" “"+(f.name||tr("(sin título)","(untitled)"))+"”?")) return;
+          S.list=S.list.filter(x=>x.id!==f.id); saveStore("flows",S);
+          toastMini("🗑 "+tr("Flujo eliminado","Flow deleted")); draw(sr.value);
+        };
+        listBox.appendChild(row);
+      });
+    });
+  };
+  draw(); sr.oninput=()=>draw(sr.value);
+  $("#flNew").onclick=()=>{
+    const f={id:flowUid(), name:"", fold:"", mode:"flow", nodes:[], edges:[], view:{x:0,y:0,z:1}, up:Date.now()};
+    S.list.push(f); saveStore("flows",S); openFlow(f.id);
+  };
+}
+function openFlow(id, sharedDoc){
+  VIEW="flows"; if(typeof dockComposer==="function") dockComposer();
+  const root=$("#canvas"); root.style.display="block"; root.className=""; root.innerHTML=""; CURRENT=null;
+  const S=flowsStore();
+  let item=null, shared=!!sharedDoc, D;
+  if(shared){ D={mode:sharedDoc.mode||"flow", name:sharedDoc.name||"", fold:"",
+      nodes:sharedDoc.nodes||[], edges:sharedDoc.edges||[], view:{x:0,y:0,z:1}}; }
+  else { item=S.list.find(x=>x.id===id); if(!item) return renderFlows();
+    D={mode:item.mode||"flow", name:item.name||"", fold:item.fold||"",
+       nodes:item.nodes||[], edges:item.edges||[], view:item.view&&typeof item.view.z==="number"?item.view:{x:0,y:0,z:1}}; }
+  const view=D.view;
+  FL={ D, item, sel:null, selEdge:null, plane:null, svg:null, edgeG:null, view, shared };
+  const save=()=>{ if(FL.shared||!FL.item) return; const it=FL.item;
+    it.mode=D.mode; it.name=D.name; it.fold=D.fold; it.nodes=D.nodes; it.edges=D.edges; it.view=view; it.up=Date.now();
+    saveStore("flows",S); };
+  let saveT=null; const saveSoon=()=>{ clearTimeout(saveT); saveT=setTimeout(save,400); };
+
+  // encabezado: volver + título + carpeta
+  const head=el("div","j-head");
+  head.innerHTML=`<button class="lib-act" id="flBack">← ${tr("Flujos","Flows")}</button>`;
+  root.appendChild(head);
+  $("#flBack").onclick=()=>{ save(); renderFlows(); };
+  const titRow=el("div","n-titrow");
+  titRow.innerHTML=`<input id="flTit" class="n-tit" placeholder="${tr("Nombre — ej: Proceso de venta","Name — e.g. Sales process")}" value="${esc(D.name||"")}">
+    <input id="flFold" class="n-fold" placeholder="📁 ${tr("carpeta","folder")}" value="${esc(D.fold||"")}">`;
+  root.appendChild(titRow);
+  $("#flTit").oninput=e=>{ D.name=e.target.value; saveSoon(); };
+  $("#flFold").oninput=e=>{ D.fold=e.target.value; saveSoon(); };
+
+  // barra: izquierda (modo, nodo, vaciar) — derecha (descargas: png, link)
+  const bar=el("div","fl-bar");
+  bar.innerHTML=`
+    <div class="fl-seg" id="flSeg">
+      <button data-m="flow" class="${D.mode==="flow"?"on":""}">→ ${tr("Proceso","Process")}</button>
+      <button data-m="mind" class="${D.mode==="mind"?"on":""}">✷ ${tr("Mapa mental","Mind map")}</button>
+    </div>
+    <button class="lib-act" id="flAdd">＋ ${tr("Nodo","Node")}</button>
+    <button class="lib-act" id="flClear">🧹 ${tr("Vaciar","Clear")}</button>
+    <span class="fl-right">
+      <button class="lib-act" id="flPng">⬇ PNG</button>
+      <button class="lib-act" id="flLink">🔗 ${tr("Link","Link")}</button>
+    </span>`;
+  root.appendChild(bar);
+  const hint=el("div","fl-hint",
+    tr("Doble-click = nodo · arrastra el punto ● para conectar · arrastra la esquina ◢ para agrandar · rueda para zoom, arrastra el fondo para mover",
+       "Double-click = node · drag the ● dot to connect · drag the ◢ corner to resize · scroll to zoom, drag the background to pan"));
+  root.appendChild(hint);
+
+  if(shared){
+    const bn=el("div","fl-banner");
+    bn.innerHTML=`<span>👀 ${tr("Estás viendo un diagrama compartido","You're viewing a shared diagram")}</span>
+      <button class="lib-act" id="flKeep">${tr("Guardar como mío","Save as mine")}</button>
+      <button class="lib-act ghost" id="flDrop">${tr("Descartar","Discard")}</button>`;
+    root.appendChild(bn);
+    bn.querySelector("#flKeep").onclick=()=>{
+      const it={id:flowUid(), name:D.name||tr("Flujo compartido","Shared flow"), fold:D.fold||"",
+        mode:D.mode, nodes:D.nodes, edges:D.edges, view, up:Date.now()};
+      S.list.push(it); FL.item=it; FL.shared=false; save(); bn.remove();
+      const t=$("#flTit"); if(t&&!t.value) t.value=it.name;
+      toastMini(tr("✓ Guardado en tus flujos","✓ Saved to your flows"));
+    };
+    bn.querySelector("#flDrop").onclick=()=>{ renderFlows(); };
+  }
+
+  const wrap=el("div","fl-wrap");
+  const plane=el("div","fl-plane");
+  const svgNS="http://www.w3.org/2000/svg";
+  const svg=document.createElementNS(svgNS,"svg"); svg.setAttribute("class","fl-edges");
+  svg.innerHTML=`<defs>
+    <marker id="flArrow" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="7.5" markerHeight="7.5" orient="auto-start-reverse">
+      <path d="M0.5,0.5 L9,5 L0.5,9.5 L3,5 z" fill="var(--ink-soft)"></path></marker>
+    <marker id="flArrowSel" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="7.5" markerHeight="7.5" orient="auto-start-reverse">
+      <path d="M0.5,0.5 L9,5 L0.5,9.5 L3,5 z" fill="var(--accent)"></path></marker></defs>
+    <g class="fl-edge-g"></g>`;
+  plane.appendChild(svg);
+  wrap.appendChild(plane);
+  root.appendChild(wrap);
+  // controles de zoom
+  const zc=el("div","fl-zoom");
+  zc.innerHTML=`<button id="flZo">–</button><span class="lvl" id="flLvl">100%</span><button id="flZi">+</button>`;
+  wrap.appendChild(zc);
+  FL.plane=plane; FL.svg=svg; FL.edgeG=svg.querySelector(".fl-edge-g");
+
+  applyView();
+
+  // ------- toggle de modo -------
+  bar.querySelectorAll("#flSeg button").forEach(b=>b.onclick=()=>{
+    D.mode=b.dataset.m; save();
+    bar.querySelectorAll("#flSeg button").forEach(x=>x.classList.toggle("on",x.dataset.m===D.mode));
+    D.nodes.forEach(n=>{ const dom=nodeDom(n.id); if(dom) applyNodeStyle(dom,n); });
+    drawEdges();
+  });
+  $("#flAdd").onclick=()=>{ const c=centerPlane(); const n=addNode(c.x-56,c.y-26); setTimeout(()=>editNode(n.id),0); };
+  $("#flClear").onclick=()=>{ if(D.nodes.length && !confirm(tr("¿Vaciar el lienzo?","Clear the canvas?"))) return; D.nodes=[]; D.edges=[]; save(); paintAll(); };
+  $("#flPng").onclick=exportPng;
+  $("#flLink").onclick=shareLink;
+  $("#flZi").onclick=()=>zoomTo(view.z*1.2);
+  $("#flZo").onclick=()=>zoomTo(view.z/1.2);
+  $("#flLvl").onclick=fitView;
+
+  // ------- pan + zoom -------
+  wrap.addEventListener("wheel",e=>{
+    e.preventDefault();
+    if(e.ctrlKey||e.metaKey){ const f=Math.exp(-e.deltaY*0.0018); zoomAt(view.z*f, e.clientX, e.clientY); }
+    else { view.x-=e.deltaX; view.y-=e.deltaY; applyView(); saveSoon(); }
+  },{passive:false});
+  wrap.addEventListener("mousedown",e=>{
+    if(e.target!==wrap && e.target!==plane && e.target!==svg && !e.target.classList.contains("fl-edge-g")) return;
+    selectNode(null); selectEdge(null);
+    const sx=e.clientX, sy=e.clientY, ox=view.x, oy=view.y; let moved=false;
+    wrap.classList.add("panning");
+    const mv=ev=>{ view.x=ox+(ev.clientX-sx); view.y=oy+(ev.clientY-sy); moved=true; applyView(); };
+    const up=()=>{ document.removeEventListener("mousemove",mv); document.removeEventListener("mouseup",up);
+      wrap.classList.remove("panning"); if(moved) saveSoon(); };
+    document.addEventListener("mousemove",mv); document.addEventListener("mouseup",up);
+  });
+  // doble-click en vacío → nodo nuevo
+  wrap.addEventListener("dblclick",e=>{
+    if(e.target!==wrap && e.target!==plane && e.target!==svg && !e.target.classList.contains("fl-edge-g")) return;
+    const p=toPlane(e.clientX,e.clientY);
+    const n=addNode(p.x-56,p.y-26); setTimeout(()=>editNode(n.id),0);
+  });
+  document.addEventListener("keydown",flKey);
+
+  paintAll();
+  if(shared && D.nodes.length) setTimeout(fitView,30);
+
+  // ===== helpers =====
+  function uid(){ return Date.now().toString(36)+Math.random().toString(36).slice(2,6); }
+  function nodeDom(id){ return plane.querySelector('.fl-node[data-id="'+id+'"]'); }
+  function defShape(){ return D.mode==="mind" ? (D.nodes.length===0?"mind-root":"mind") : "rect"; }
+  function applyView(){ plane.style.transform="translate("+view.x+"px,"+view.y+"px) scale("+view.z+")";
+    const l=$("#flLvl"); if(l) l.textContent=Math.round(view.z*100)+"%"; }
+  function toPlane(cx,cy){ const r=wrap.getBoundingClientRect(); return {x:(cx-r.left-view.x)/view.z, y:(cy-r.top-view.y)/view.z}; }
+  function centerPlane(){ const r=wrap.getBoundingClientRect(); return toPlane(r.left+r.width/2, r.top+r.height/2); }
+  function zoomAt(z,cx,cy){ z=Math.min(2.5,Math.max(.3,z)); const p=toPlane(cx,cy); const r=wrap.getBoundingClientRect();
+    view.z=z; view.x=cx-r.left-p.x*z; view.y=cy-r.top-p.y*z; applyView(); saveSoon(); }
+  function zoomTo(z){ const r=wrap.getBoundingClientRect(); zoomAt(z, r.left+r.width/2, r.top+r.height/2); }
+  function fitView(){
+    if(!D.nodes.length){ view.x=0;view.y=0;view.z=1; applyView(); saveSoon(); return; }
+    let a=1e9,b=1e9,c=-1e9,d2=-1e9;
+    D.nodes.forEach(n=>{ const rc=rectOf(n); a=Math.min(a,rc.x); b=Math.min(b,rc.y); c=Math.max(c,rc.x+rc.w); d2=Math.max(d2,rc.y+rc.h); });
+    const pad=60; a-=pad;b-=pad;c+=pad;d2+=pad; const r=wrap.getBoundingClientRect();
+    const z=Math.min(2.5,Math.max(.3, Math.min(r.width/(c-a), r.height/(d2-b))));
+    view.z=z; view.x=(r.width-(c-a)*z)/2 - a*z; view.y=(r.height-(d2-b)*z)/2 - b*z; applyView(); saveSoon();
+  }
+
+  function addNode(x,y,text){
+    wrap.querySelectorAll(".fl-empty").forEach(x=>x.remove());
+    const n={id:uid(),x:Math.round(x),y:Math.round(y),text:text||"",shape:defShape()};
+    D.nodes.push(n); save(); paintNode(n); drawEdges(); selectNode(n.id); return n;
+  }
+  function applyNodeStyle(dom,n){
+    const sel=FL.sel===n.id;
+    dom.className="fl-node";
+    if(D.mode==="mind"){ dom.classList.add("mind"); if(n.shape==="mind-root") dom.classList.add("root"); }
+    else { if(n.shape==="pill") dom.classList.add("pill"); else if(n.shape==="diamond") dom.classList.add("diamond"); }
+    if(sel) dom.classList.add("sel");
+    dom.style.width = n.w ? n.w+"px" : "";
+    if(n.w) dom.style.maxWidth="none"; else dom.style.maxWidth="";
+  }
+  function paintNode(n){
+    const d=el("div","fl-node"); d.dataset.id=n.id;
+    d.style.left=n.x+"px"; d.style.top=n.y+"px";
+    const txt=el("div","fl-txt"); setNodeText(txt,n); d.appendChild(txt);
+    ["t","b","l","r"].forEach(s=>{ const h=el("div","fl-handle fl-h-"+s); h.dataset.side=s; d.appendChild(h);
+      h.addEventListener("mousedown",ev=>startLink(ev,n,s)); });
+    const rz=el("div","fl-resize"); d.appendChild(rz); rz.addEventListener("mousedown",ev=>startResize(ev,n,d));
+    applyNodeStyle(d,n);
+    d.addEventListener("mousedown",ev=>startDrag(ev,n,d));
+    d.addEventListener("dblclick",ev=>{ ev.stopPropagation(); editNode(n.id); });
+    plane.appendChild(d);
+    return d;
+  }
+  function setNodeText(txt,n){
+    if(n.text){ txt.textContent=n.text; txt.style.color=""; delete txt.dataset.ph; }
+    else { txt.textContent=tr("escribe…","type…"); txt.style.color="var(--ink-soft)"; txt.dataset.ph="1"; }
+  }
+  function editNode(id){
+    const n=D.nodes.find(x=>x.id===id); const d=nodeDom(id); if(!n||!d) return;
+    selectNode(id);
+    const txt=d.querySelector(".fl-txt");
+    if(txt.dataset.ph){ txt.textContent=""; txt.style.color=""; delete txt.dataset.ph; }
+    d.classList.add("editing"); txt.contentEditable="true"; txt.focus();
+    const rng=document.createRange(); rng.selectNodeContents(txt); const sl=getSelection(); sl.removeAllRanges(); sl.addRange(rng);
+    const end=()=>{ txt.contentEditable="false"; d.classList.remove("editing");
+      n.text=txt.textContent.replace(/ /g," ").trim(); save(); setNodeText(txt,n); drawEdges(); renderTools();
+      txt.removeEventListener("blur",end); txt.removeEventListener("keydown",kd); };
+    const kd=ev=>{ ev.stopPropagation();
+      if(ev.key==="Enter"&&!ev.shiftKey){ ev.preventDefault(); txt.blur(); }
+      else if(ev.key==="Escape"){ ev.preventDefault(); txt.blur(); }
+      setTimeout(()=>{ drawEdges(); renderTools(); },0); };
+    txt.addEventListener("blur",end); txt.addEventListener("keydown",kd);
+  }
+  function selectNode(id){
+    FL.sel=id; FL.selEdge=null;
+    plane.querySelectorAll(".fl-node").forEach(d=>d.classList.toggle("sel",d.dataset.id===id));
+    drawEdges(); renderTools();
+  }
+  function selectEdge(id){
+    FL.selEdge=id; FL.sel=null;
+    plane.querySelectorAll(".fl-node").forEach(d=>d.classList.remove("sel"));
+    renderTools(); drawEdges();
+  }
+  function renderTools(){
+    plane.querySelectorAll(".fl-tools").forEach(t=>t.remove());
+    if(!FL.sel) return;
+    const n=D.nodes.find(x=>x.id===FL.sel); const d=nodeDom(FL.sel); if(!n||!d) return;
+    if(d.classList.contains("editing")) return;
+    const t=el("div","fl-tools");
+    if(D.mode==="flow"){
+      const shapes=[["rect","▭",tr("Paso","Step")],["diamond","◇",tr("Decisión","Decision")],["pill","⬭",tr("Inicio/Fin","Start/End")]];
+      shapes.forEach(([sh,ic,tt])=>{ const b=el("button",n.shape===sh?"on":null,ic); b.title=tt;
+        b.onmousedown=ev=>ev.stopPropagation();
+        b.onclick=ev=>{ ev.stopPropagation(); n.shape=sh; save(); applyNodeStyle(d,n); drawEdges(); renderTools(); }; t.appendChild(b); });
+      t.appendChild(el("div","sep"));
+    }
+    const ed=el("button",null,"✎"); ed.title=tr("Editar","Edit"); ed.onmousedown=ev=>ev.stopPropagation();
+    ed.onclick=ev=>{ev.stopPropagation();editNode(n.id);}; t.appendChild(ed);
+    const del=el("button","del","🗑"); del.title=tr("Eliminar","Delete"); del.onmousedown=ev=>ev.stopPropagation();
+    del.onclick=ev=>{ev.stopPropagation();delNode(n.id);}; t.appendChild(del);
+    plane.appendChild(t);
+    // posicionar encima del nodo (coords de plano; la barra escala con el plano)
+    const bw=t.offsetWidth||120, bh=t.offsetHeight||40, r=rectOf(n);
+    t.style.left=(r.x+r.w/2-bw/2)+"px"; t.style.top=(r.y-bh-8)+"px";
+  }
+  function delNode(id){
+    D.nodes=D.nodes.filter(n=>n.id!==id);
+    D.edges=D.edges.filter(e=>e.from!==id&&e.to!==id);
+    FL.sel=null; save(); paintAll();
+  }
+  function delEdge(id){ D.edges=D.edges.filter(e=>e.id!==id); FL.selEdge=null; save(); paintAll(); }
+
+  // ------- arrastrar nodo -------
+  function startDrag(e,n,d){
+    if(d.classList.contains("editing")) return;
+    if(e.target.classList.contains("fl-handle")||e.target.classList.contains("fl-resize")) return;
+    e.preventDefault(); e.stopPropagation(); selectNode(n.id);
+    const sx=e.clientX, sy=e.clientY, ox=n.x, oy=n.y; let moved=false;
+    const mv=ev=>{ const dx=(ev.clientX-sx)/view.z, dy=(ev.clientY-sy)/view.z;
+      if(!moved && Math.abs(ev.clientX-sx)+Math.abs(ev.clientY-sy)>3){ moved=true; d.classList.add("dragging");
+        plane.querySelectorAll(".fl-tools").forEach(t=>t.remove()); }
+      if(!moved) return;
+      n.x=Math.round(ox+dx); n.y=Math.round(oy+dy);
+      d.style.left=n.x+"px"; d.style.top=n.y+"px"; drawEdges(); };
+    const up=()=>{ document.removeEventListener("mousemove",mv); document.removeEventListener("mouseup",up);
+      d.classList.remove("dragging"); if(moved) save(); renderTools(); };
+    document.addEventListener("mousemove",mv); document.addEventListener("mouseup",up);
+  }
+
+  // ------- redimensionar nodo -------
+  function startResize(e,n,d){
+    e.preventDefault(); e.stopPropagation(); selectNode(n.id);
+    const sx=e.clientX, ow=d.offsetWidth;
+    plane.querySelectorAll(".fl-tools").forEach(t=>t.remove());
+    const mv=ev=>{ const w=Math.round(ow+(ev.clientX-sx)/view.z); n.w=Math.min(520,Math.max(88,w));
+      d.style.width=n.w+"px"; d.style.maxWidth="none"; drawEdges(); };
+    const up=()=>{ document.removeEventListener("mousemove",mv); document.removeEventListener("mouseup",up); save(); renderTools(); };
+    document.addEventListener("mousemove",mv); document.addEventListener("mouseup",up);
+  }
+
+  // ------- crear conexión arrastrando un handle -------
+  function startLink(e,n,side){
+    e.preventDefault(); e.stopPropagation();
+    const temp=document.createElementNS(svgNS,"path");
+    temp.setAttribute("class","fl-edge"); temp.setAttribute("stroke-dasharray","6 5"); temp.style.opacity=".7";
+    if(D.mode==="flow") temp.setAttribute("marker-end","url(#flArrow)");
+    FL.edgeG.appendChild(temp);
+    const start=anchor(n,side);
+    const mv=ev=>{ const p=toPlane(ev.clientX,ev.clientY);
+      temp.setAttribute("d", D.mode==="mind"?curve(start.x,start.y,p.x,p.y):"M"+start.x+","+start.y+" L"+p.x+","+p.y); };
+    const up=ev=>{ document.removeEventListener("mousemove",mv); document.removeEventListener("mouseup",up); temp.remove();
+      const tgt=document.elementFromPoint(ev.clientX,ev.clientY);
+      const tn=tgt&&tgt.closest(".fl-node");
+      if(tn && tn.dataset.id!==n.id){ addEdge(n.id,tn.dataset.id); selectNode(tn.dataset.id); }
+      else if(!tn){ const p=toPlane(ev.clientX,ev.clientY); const nn=addNode(p.x-56,p.y-26); addEdge(n.id,nn.id); setTimeout(()=>editNode(nn.id),0); }
+    };
+    document.addEventListener("mousemove",mv); document.addEventListener("mouseup",up);
+  }
+  function addEdge(from,to){
+    if(from===to) return;
+    if(D.edges.some(e=>(e.from===from&&e.to===to)||(e.from===to&&e.to===from))) return;
+    D.edges.push({id:uid(),from,to,label:""}); save(); drawEdges();
+  }
+
+  // ------- geometría de flechas -------
+  function rectOf(n){ const d=nodeDom(n.id); const w=d?d.offsetWidth:(n.w||110), h=d?d.offsetHeight:50;
+    return {x:n.x,y:n.y,w,h,cx:n.x+w/2,cy:n.y+h/2}; }
+  function anchor(n,side){ const r=rectOf(n);
+    return side==="t"?{x:r.cx,y:r.y}:side==="b"?{x:r.cx,y:r.y+r.h}:side==="l"?{x:r.x,y:r.cy}:{x:r.x+r.w,y:r.cy}; }
+  function curve(x1,y1,x2,y2,horiz){ // bezier suave
+    if(horiz===undefined) horiz=Math.abs(x2-x1)>=Math.abs(y2-y1);
+    if(horiz){ const dx=Math.max(40,Math.abs(x2-x1)*.5); return "M"+x1+","+y1+" C"+(x1+Math.sign(x2-x1||1)*dx)+","+y1+" "+(x2-Math.sign(x2-x1||1)*dx)+","+y2+" "+x2+","+y2; }
+    const dy=Math.max(40,Math.abs(y2-y1)*.5); return "M"+x1+","+y1+" C"+x1+","+(y1+Math.sign(y2-y1||1)*dy)+" "+x2+","+(y2-Math.sign(y2-y1||1)*dy)+" "+x2+","+y2;
+  }
+  function rounded(pts,r){ // codos redondeados sobre una polilínea
+    pts=pts.filter((p,i)=>i===0||Math.abs(p.x-pts[i-1].x)>0.5||Math.abs(p.y-pts[i-1].y)>0.5);
+    if(pts.length<2) return "M"+pts[0].x+","+pts[0].y;
+    let d="M"+pts[0].x+","+pts[0].y;
+    for(let i=1;i<pts.length-1;i++){
+      const p0=pts[i-1],p1=pts[i],p2=pts[i+1];
+      const l1=Math.hypot(p1.x-p0.x,p1.y-p0.y), l2=Math.hypot(p2.x-p1.x,p2.y-p1.y);
+      const rr=Math.min(r,l1/2,l2/2);
+      const a={x:p1.x+(p0.x-p1.x)/l1*rr, y:p1.y+(p0.y-p1.y)/l1*rr};
+      const b={x:p1.x+(p2.x-p1.x)/l2*rr, y:p1.y+(p2.y-p1.y)/l2*rr};
+      d+=" L"+a.x.toFixed(1)+","+a.y.toFixed(1)+" Q"+p1.x+","+p1.y+" "+b.x.toFixed(1)+","+b.y.toFixed(1);
+    }
+    const last=pts[pts.length-1]; d+=" L"+last.x+","+last.y; return d;
+  }
+  function edgePath(a,b){ // ruteo ortogonal (flow) o curva (mind) entre dos rectOf
+    const dx=b.cx-a.cx, dy=b.cy-a.cy, GAP=18;
+    if(Math.abs(dx)>=Math.abs(dy)){
+      const dir=dx>=0?1:-1;
+      const s={x:a.cx+dir*a.w/2, y:a.cy}, t={x:b.cx-dir*b.w/2, y:b.cy};
+      if(D.mode==="mind") return {path:curve(s.x,s.y,t.x,t.y,true),end:t};
+      const gap=Math.min(GAP,Math.abs(t.x-s.x)/2);
+      const mx=(s.x+t.x)/2;
+      const pts=[s,{x:mx,y:s.y},{x:mx,y:t.y},t];
+      if(Math.abs(t.x-s.x)<GAP*2){ // muy cerca: rodear
+        const off=dir*(GAP); pts.splice(1,2,{x:s.x+off,y:s.y},{x:s.x+off,y:(s.y+t.y)/2},{x:t.x-off,y:(s.y+t.y)/2},{x:t.x-off,y:t.y}); }
+      return {path:rounded(pts,14),end:t};
+    } else {
+      const dir=dy>=0?1:-1;
+      const s={x:a.cx, y:a.cy+dir*a.h/2}, t={x:b.cx, y:b.cy-dir*b.h/2};
+      if(D.mode==="mind") return {path:curve(s.x,s.y,t.x,t.y,false),end:t};
+      const my=(s.y+t.y)/2;
+      const pts=[s,{x:s.x,y:my},{x:t.x,y:my},t];
+      if(Math.abs(t.y-s.y)<GAP*2){ const off=dir*GAP; pts.splice(1,2,{x:s.x,y:s.y+off},{x:(s.x+t.x)/2,y:s.y+off},{x:(s.x+t.x)/2,y:t.y-off},{x:t.x,y:t.y-off}); }
+      return {path:rounded(pts,14),end:t};
+    }
+  }
+  function drawEdges(){
+    FL.edgeG.innerHTML="";
+    plane.querySelectorAll(".fl-elabel").forEach(l=>l.remove());
+    D.edges.forEach(ed=>{
+      const nf=D.nodes.find(n=>n.id===ed.from), nt=D.nodes.find(n=>n.id===ed.to); if(!nf||!nt) return;
+      const {path}=edgePath(rectOf(nf),rectOf(nt)); const seld=FL.selEdge===ed.id;
+      const p=document.createElementNS(svgNS,"path"); p.setAttribute("class","fl-edge"+(seld?" sel":"")); p.setAttribute("d",path);
+      if(D.mode==="flow") p.setAttribute("marker-end", seld?"url(#flArrowSel)":"url(#flArrow)");
+      const hit=document.createElementNS(svgNS,"path"); hit.setAttribute("class","fl-hit"); hit.setAttribute("d",path);
+      hit.addEventListener("mousedown",e=>{e.stopPropagation();selectEdge(ed.id);});
+      hit.addEventListener("dblclick",e=>{e.stopPropagation();editLabel(ed);});
+      FL.edgeG.appendChild(p); FL.edgeG.appendChild(hit);
+      if(ed.label){ const mid=midOfPath(path);
+        const lb=el("div","fl-elabel"); lb.textContent=ed.label; lb.style.left=mid.x+"px"; lb.style.top=mid.y+"px";
+        lb.addEventListener("dblclick",e=>{e.stopPropagation();editLabel(ed);}); plane.appendChild(lb); }
+    });
+  }
+  function midOfPath(d){ const nums=d.match(/-?\d+(\.\d+)?/g).map(Number); const pts=[];
+    for(let i=0;i<nums.length-1;i+=2) pts.push({x:nums[i],y:nums[i+1]});
+    return pts[Math.floor(pts.length/2)]||pts[0]||{x:0,y:0}; }
+  function editLabel(ed){
+    const v=prompt(tr("Etiqueta de la flecha (ej: sí / no):","Arrow label (e.g. yes / no):"),ed.label||"");
+    if(v===null) return; ed.label=v.trim(); save(); drawEdges();
+  }
+
+  function flKey(e){
+    if(VIEW!=="flows") return;
+    const t=e.target;
+    if(t&&(t.isContentEditable||t.tagName==="INPUT"||t.tagName==="TEXTAREA")) return;
+    if(e.key==="Delete"||e.key==="Backspace"){
+      if(FL.sel){ e.preventDefault(); delNode(FL.sel); }
+      else if(FL.selEdge){ e.preventDefault(); delEdge(FL.selEdge); }
+    }
+    else if((e.key==="Enter"||e.key==="F2")&&FL.sel){ e.preventDefault(); editNode(FL.sel); }
+    else if(e.key==="0"&&(e.metaKey||e.ctrlKey)){ e.preventDefault(); fitView(); }
+  }
+
+  function paintAll(){
+    plane.querySelectorAll(".fl-node,.fl-tools,.fl-elabel").forEach(x=>x.remove());
+    wrap.querySelectorAll(".fl-empty").forEach(x=>x.remove());
+    D.nodes.forEach(paintNode);
+    drawEdges(); renderTools();
+    if(!D.nodes.length){ const em=el("div","fl-empty",
+      tr("Doble-click en cualquier parte para tu primer nodo.<br>Pasa el mouse por un nodo y arrastra el punto ● para conectar.",
+         "Double-click anywhere for your first node.<br>Hover a node and drag the ● dot to connect."));
+      wrap.appendChild(em); }
+  }
+
+  // ------- compartir por link (diagrama codificado en la URL) -------
+  function encodeShare(){ // formato compacto: {m:modo, n:[[x,y,text,shape,w]], e:[[fromIdx,toIdx,label]]}
+    const idx={}; D.nodes.forEach((n,i)=>idx[n.id]=i);
+    const o={m:D.mode, t:D.name||"",
+      n:D.nodes.map(n=>[Math.round(n.x),Math.round(n.y),n.text||"",n.shape||"rect",n.w||0]),
+      e:D.edges.map(e=>[idx[e.from],idx[e.to],e.label||""]).filter(a=>a[0]!=null&&a[1]!=null)};
+    return btoa(unescape(encodeURIComponent(JSON.stringify(o)))).replace(/\+/g,"-").replace(/\//g,"_").replace(/=+$/,"");
+  }
+  function shareBase(){ // en local, apunta a la app pública para que el link ABRA en cualquier dispositivo
+    const h=location.hostname;
+    if(location.protocol==="file:"||h==="localhost"||h==="127.0.0.1"||h==="") return "https://vicentemv1.github.io/vm-planner/";
+    return location.origin+location.pathname;
+  }
+  function shareLink(){
+    if(!D.nodes.length){ alert(tr("Nada que compartir todavía.","Nothing to share yet.")); return; }
+    const url=shareBase()+"#flow="+encodeShare();
+    const ok=()=>toastMini(tr("🔗 Link copiado — cualquiera que lo abra ve el diagrama","🔗 Link copied — anyone who opens it sees the diagram"));
+    if(navigator.clipboard&&navigator.clipboard.writeText){ navigator.clipboard.writeText(url).then(ok,()=>prompt(tr("Copia el link:","Copy the link:"),url)); }
+    else prompt(tr("Copia el link:","Copy the link:"),url);
+  }
+
+  // ------- export PNG (snapshot SVG → canvas) -------
+  function exportPng(){
+    if(!D.nodes.length){ alert(tr("Nada que exportar todavía.","Nothing to export yet.")); return; }
+    let minX=1e9,minY=1e9,maxX=-1e9,maxY=-1e9;
+    D.nodes.forEach(n=>{ const r=rectOf(n); minX=Math.min(minX,r.x); minY=Math.min(minY,r.y);
+      maxX=Math.max(maxX,r.x+r.w); maxY=Math.max(maxY,r.y+r.h); });
+    const pad=48; minX-=pad; minY-=pad; maxX+=pad; maxY+=pad;
+    const W=maxX-minX, H=maxY-minY;
+    const dark=document.body.classList.contains("dark");
+    const bg=dark?"#1C1C1F":"#FFFFFF", ink=dark?"#F0F0F2":"#1D1D1F", soft="#86868B", acc=dark?"#5FA98D":"#2F6B57", accSoft=dark?"#243B33":"#EDF2EF";
+    let s=`<svg xmlns="http://www.w3.org/2000/svg" width="${W}" height="${H}" viewBox="${minX} ${minY} ${W} ${H}">`;
+    s+=`<rect x="${minX}" y="${minY}" width="${W}" height="${H}" fill="${bg}"/>`;
+    s+=`<defs><marker id="a" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="7.5" markerHeight="7.5" orient="auto-start-reverse"><path d="M0.5,0.5 L9,5 L0.5,9.5 L3,5 z" fill="${soft}"/></marker></defs>`;
+    D.edges.forEach(ed=>{ const nf=D.nodes.find(n=>n.id===ed.from),nt=D.nodes.find(n=>n.id===ed.to); if(!nf||!nt)return;
+      const {path}=edgePath(rectOf(nf),rectOf(nt));
+      s+=`<path d="${path}" fill="none" stroke="${soft}" stroke-width="2" stroke-linejoin="round" stroke-linecap="round" ${D.mode==="flow"?'marker-end="url(#a)"':""}/>`;
+      if(ed.label){ const m=midOfPath(path); const w=ed.label.length*7+14;
+        s+=`<rect x="${m.x-w/2}" y="${m.y-11}" width="${w}" height="22" rx="6" fill="${bg}" stroke="${soft}" stroke-width="1"/><text x="${m.x}" y="${m.y+4}" font-family="-apple-system,sans-serif" font-size="12" font-weight="600" fill="${ink}" text-anchor="middle">${esc(ed.label)}</text>`; }
+    });
+    D.nodes.forEach(n=>{ const r=rectOf(n); const mind=D.mode==="mind";
+      const fill=mind?(n.shape==="mind-root"?ink:accSoft):bg;
+      const stroke=mind?"none":ink; const tcol=mind?(n.shape==="mind-root"?bg:acc):ink;
+      const rx=(mind||n.shape==="pill")?r.h/2:13;
+      if(!mind && n.shape==="diamond"){ const cx=r.x+r.w/2,cy=r.y+r.h/2;
+        s+=`<polygon points="${cx},${r.y} ${r.x+r.w},${cy} ${cx},${r.y+r.h} ${r.x},${cy}" fill="${fill}" stroke="${stroke}" stroke-width="1.5"/>`; }
+      else s+=`<rect x="${r.x}" y="${r.y}" width="${r.w}" height="${r.h}" rx="${rx}" fill="${fill}" ${stroke!=="none"?`stroke="${stroke}" stroke-width="1.5"`:""}/>`;
+      const lines=wrapText(n.text||"", r.w-28); const lh=18, y0=r.y+r.h/2-(lines.length-1)*lh/2+4;
+      lines.forEach((ln,i)=>{ s+=`<text x="${r.x+r.w/2}" y="${y0+i*lh}" font-family="-apple-system,sans-serif" font-size="14" font-weight="600" fill="${tcol}" text-anchor="middle">${esc(ln)}</text>`; });
+    });
+    s+="</svg>";
+    const img=new Image(); const blob=new Blob([s],{type:"image/svg+xml"}); const url=URL.createObjectURL(blob);
+    img.onload=()=>{ const sc=2; const cv=document.createElement("canvas"); cv.width=W*sc; cv.height=H*sc;
+      const ctx=cv.getContext("2d"); ctx.scale(sc,sc); ctx.drawImage(img,0,0); URL.revokeObjectURL(url);
+      cv.toBlob(bb=>{ const a=document.createElement("a"); a.href=URL.createObjectURL(bb);
+        a.download=(D.name?D.name.replace(/[^\w\sáéíóúñ-]/gi,"").trim().replace(/\s+/g,"-"):"flujo")+"-"+todayStr()+".png";
+        a.click(); toastMini(tr("⬇ PNG descargado","⬇ PNG downloaded")); }); };
+    img.onerror=()=>{ URL.revokeObjectURL(url); alert(tr("No pude exportar.","Export failed.")); };
+    img.src=url;
+  }
+  function wrapText(t,maxW){ if(!t) return [""]; const words=t.split(/\s+/); const lines=[]; let cur="";
+    const cw=7.2; const max=Math.max(6,Math.floor(maxW/cw));
+    words.forEach(w=>{ if((cur+" "+w).trim().length<=max) cur=(cur+" "+w).trim(); else { if(cur)lines.push(cur); cur=w; } });
+    if(cur) lines.push(cur); return lines.length?lines:[""]; }
+  function esc(s){ return String(s).replace(/[<>&]/g,c=>({"<":"&lt;",">":"&gt;","&":"&amp;"}[c])); }
+}
+
 /* ---------- 🎯 Modo Foco ---------- */
 let FOCUS=null;
 function openFocusSetup(){
@@ -4228,6 +4825,7 @@ refreshAI();
 
 // Escribir / Rápidas (cada uno vive en su pestaña)
 $("#openJournal").onclick=()=>focusKindTab("journal");
+$("#openFlows").onclick=renderFlows;
 $("#openQuick").onclick=()=>focusKindTab("quick");
 
 // 🐸 Mi día
