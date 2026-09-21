@@ -3275,8 +3275,10 @@ function renderQuick(){
     root.appendChild(tc);
   }
   const add=el("div","q-add");
-  add.innerHTML=`<input type="text" id="qNew" placeholder="${tr("Escribe y Enter…  (! al inicio = prioridad A)","Type and Enter…  (! prefix = A priority)")}">
+  add.innerHTML=`<input type="text" id="qNew" placeholder="${tr("Escribe y Enter…   ! = A · !b · !c · !d","Type and Enter…   ! = A · !b · !c · !d")}">
+    <span class="ab" id="qPrio" style="display:none;position:absolute;right:64px;top:50%;transform:translateY(-50%)"></span>
     <button class="mic-btn" id="micTask" title="${tr("Dictar tarea","Dictate task")}">🎤</button>`;
+  add.style.position="relative";
   root.appendChild(add);
   // 🎤 dictar una tarea: habla, se escribe en el campo, Enter y listo
   (()=>{
@@ -3431,10 +3433,23 @@ function renderQuick(){
   };
   draw();
   const inp=$("#qNew");
+  // prioridad desde la caja: "!" = A · "!b" "!c" "!d" = el resto (la letra necesita espacio después: "!apagar" sigue siendo A)
+  const parsePrio=v=>{
+    let m=v.match(/^!\s*([abcd])\s+(.+)/i);
+    if(m) return {ab:m[1].toUpperCase(), txt:m[2].trim()};
+    if(v.startsWith("!")) return {ab:"A", txt:v.replace(/^!+\s*/,"")};
+    return {ab:null, txt:v};
+  };
+  const qp=$("#qPrio");
+  inp.addEventListener("input",()=>{
+    const p=parsePrio(inp.value.trim());
+    if(qp){ if(p.ab){ qp.textContent=p.ab; qp.className="ab ab-"+p.ab; qp.style.display="grid"; } else qp.style.display="none"; }
+  });
   inp.addEventListener("keydown",e=>{
     if(e.key==="Enter"&&inp.value.trim()){
-      let txt=inp.value.trim(); let ab=null;
-      if(txt.startsWith("!")){ ab="A"; txt=txt.replace(/^!+\s*/,""); }
+      const p=parsePrio(inp.value.trim());
+      let txt=p.txt, ab=p.ab;
+      if(qp) qp.style.display="none";
       if(txt){
         // nace en el día que estás mirando (Hoy / Mañana / Pasado mañana)
         const dSel=QDAYF>0 ? localDate(new Date(Date.now()+QDAYF*86400000)) : null;
