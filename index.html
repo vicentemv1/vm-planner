@@ -784,6 +784,8 @@
   .tt:not(.sel):hover{border-color:var(--accent);color:var(--accent)}
   .top-row.top-ok .top-txt{text-decoration:line-through;color:var(--ink-soft);font-weight:600}
   .lnk-ind{font-size:11px;opacity:.7}
+  .t-desc{display:block;font-size:12px;font-weight:400;color:var(--ink-soft);margin-top:2px;
+    white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%}
   .ttxt{cursor:pointer}
   .n-titrow{display:flex;gap:10px;align-items:center;margin:6px 0 12px}
   .n-tit{flex:1;min-width:0;font-size:23px;font-weight:700;letter-spacing:-0.02em;border:none;background:transparent;
@@ -3340,7 +3342,10 @@ function renderQuick(){
     const ageChip=(!t.done&&age>0)?`<span class="age-chip ${age===1?"age-1":"age-2"}">${age===1?"ayer":"hace "+age+" días"}</span>`:"";
     row.innerHTML=`<span class="box" title="${t.done?"Reabrir":"Completar"}"></span>
       <span class="ab ${t.abcde?"ab-"+t.abcde:"ab-x"}" title="Prioridad ABCDE (clic para cambiar)">${t.abcde||"·"}</span>
-      <span class="ttxt" title="${tr("Abrir detalle (links, contexto)","Open details (links, context)")}">${t.top==="AM"?"☀️ ":t.top==="PM"?"🌇 ":""}${esc(t.txt)}${/https?:\/\//.test(t.ctx||"")?' <span class="lnk-ind">🔗</span>':(t.ctx||"").trim()?' <span class="lnk-ind">📝</span>':""}${t.gid?` <span class="g-badge" title="Google Tasks · ${esc(t.glistName||"")}">G</span>`:""}${t.abcde==="D"?" <span style=\'font-size:11px;color:#4F86C6;font-weight:700\'>· delegar</span>":""}</span>
+      <span class="ttxt" title="${tr("Abrir detalle (links, contexto)","Open details (links, context)")}">${t.top==="AM"?"☀️ ":t.top==="PM"?"🌇 ":""}${esc(t.txt)}${/https?:\/\//.test(t.ctx||"")?' <span class="lnk-ind">🔗</span>':""}${t.gid?` <span class="g-badge" title="Google Tasks · ${esc(t.glistName||"")}">G</span>`:""}${t.abcde==="D"?" <span style=\'font-size:11px;color:#4F86C6;font-weight:700\'>· delegar</span>":""}${(()=>{
+        const prev=(t.ctx||"").split("\n").map(l=>l.trim()).filter(l=>l&&!/^https?:\/\/\S+$/.test(l))[0]||"";
+        return prev&&!t.done ? `<span class="t-desc">${esc(trim(prev,90))}</span>` : "";
+      })()}</span>
       ${t.hora&&!t.done?`<span class="hora-chip" title="Cambiar hora">🕘 ${esc(t.hora)}</span>`:(!t.done?`<span class="hora-chip empty" title="Asignar hora">🕘 hora</span>`:"")}
       ${ageChip}
       ${snoozed&&fechaDe(t)?`<span class="due-chip t-cal" title="Cambiar fecha" style="cursor:pointer">📅 ${fmtDia(fechaDe(t))}</span>`:""}
