@@ -2845,7 +2845,11 @@ function openTaskDetail(t, save, after){
       <button class="lib-act" id="tdDate" style="position:relative">📅 ${fecha()?fmtDia(fecha()):tr("hoy","today")}</button>
       <span class="td-lb">${tr("Hora","Time")}</span>
       <input type="time" id="tdHora" class="lib-act" style="padding:5px 9px" value="${esc(t.hora||"")}">
-      ${t.glistName?`<span class="td-lb">${tr("Lista","List")}</span><span class="cat-pill cp-todo" title="${tr("La lista se cambia en Google Tasks","Change the list in Google Tasks")}">${esc(t.glistName)}</span>`:""}
+      ${gLists().length?`<span class="td-lb">${tr("Lista","List")}</span>
+        <select id="tdList" class="lib-act" style="padding:5px 9px">
+          ${!t.gid?`<option value="">${tr("(solo local)","(local only)")}</option>`:""}
+          ${gLists().map(l=>`<option value="${esc(l.id)}" ${l.id===t.glist?"selected":""}>${esc(l.title)}</option>`).join("")}
+        </select>`:(t.glistName?`<span class="td-lb">${tr("Lista","List")}</span><span class="cat-pill cp-todo">${esc(t.glistName)}</span>`:"")}
     </div>
     <p class="q-sub" style="margin:14px 0 6px;font-size:12px">${tr("Descripción — se sincroniza con Google Tasks. Pega links (Gmail, WhatsApp, Docs…): quedan clickeables.","Description — syncs with Google Tasks. Paste links: they become clickable.")}</p>
     <textarea id="tdCtx" class="lib-search" style="min-height:120px;resize:vertical;font-family:inherit;line-height:1.6">${esc(t.ctx||"")}</textarea>
@@ -2868,6 +2872,15 @@ function openTaskDetail(t, save, after){
     });
   };
   $("#tdHora").onchange=e=>{ t.hora=e.target.value||null; save(); };
+  const tdl=$("#tdList");
+  if(tdl) tdl.onchange=async e=>{
+    const l=gLists().find(x=>x.id===e.target.value);
+    if(!l) return;
+    tdl.disabled=true;
+    if(t.gid){ const ok=await gMoveList(t,l.id,l.title); if(ok){ save(); toastMini("✓ "+tr("Movida a","Moved to")+" "+l.title); } }
+    else { try{ const g=await gCreateTask(t.txt,l.id,l.title); Object.assign(t,g); if(t.due) gSetDue(t,t.due); if(t.ctx) gPush(t,{notes:t.ctx}); save(); toastMini("✓ "+tr("Creada en","Created in")+" "+l.title); }catch{} }
+    tdl.disabled=false;
+  };
   $("#tdOk").onclick=()=>{
     if((t.ctx||"")!==ctxOrig && t.gid) gPush(t,{notes:t.ctx||""}); // descripción → Google
     closePanel(); after();
@@ -3491,7 +3504,11 @@ function renderQuick(){
         const nt={txt, done:false, abcde:ab, created:todayStr(), snooze:dSel, due:dSel};
         Q.items.unshift(nt); save(); draw();
         // si Google está conectado, también nace allá (lista principal)
-        if(gClientId()) gCreateTask(txt).then(g=>{ Object.assign(nt,g); if(dSel) gSetDue(nt,dSel); save(); draw(); }).catch(()=>{});
+        // nace en la lista del chip de categoría activo (si hay uno)
+        const qcatSel=localStorage.getItem("nitido-qcat")||"";
+        const lst=qcatSel ? gLists().find(l=>l.title===qcatSel) : null;
+        if(lst){ nt.glistName=lst.title; } // que no se salga del filtro mientras Google responde
+        if(gClientId()) gCreateTask(txt, lst&&lst.id, lst&&lst.title).then(g=>{ Object.assign(nt,g); if(dSel) gSetDue(nt,dSel); save(); draw(); }).catch(()=>{});
       }
       inp.value="";
     }
@@ -3587,6 +3604,7 @@ async function syncGoogleTasks(force){
     const r=await gFetch("https://tasks.googleapis.com/tasks/v1/users/@me/lists?maxResults=25");
     if(!r.ok) throw new Error("Google respondió "+r.status+(r.status===403?" (¿Tasks API habilitada?)":""));
     const lists=((await r.json()).items)||[];
+    try{ localStorage.setItem("nitido-glists", JSON.stringify(lists.map(l=>({id:l.id,title:l.title})))); }catch{}
     const remote=[];
     // OJO: completedMin excluye también las PENDIENTES (sin fecha de completado) → se piden por separado
     const compMin=new Date(Date.now()-7*86400000).toISOString();
@@ -3673,11 +3691,27 @@ function gSetDue(t,ds){ gPush(t,{due: ds ? ds+"T00:00:00.000Z" : null}); }
 function gDeleteTask(t){
   return gFetch(`https://tasks.googleapis.com/tasks/v1/lists/${encodeURIComponent(t.glist)}/tasks/${encodeURIComponent(t.gid)}`,{method:"DELETE"});
 }
-async function gCreateTask(txt){
-  const r=await gFetch("https://tasks.googleapis.com/tasks/v1/lists/@default/tasks",{method:"POST", body:JSON.stringify({title:txt})});
+function gLists(){ try{ return JSON.parse(localStorage.getItem("nitido-glists")||"[]"); }catch{ return []; } }
+async function gCreateTask(txt, listId, listName){
+  const lid=listId||"@default";
+  const r=await gFetch(`https://tasks.googleapis.com/tasks/v1/lists/${encodeURIComponent(lid)}/tasks`,{method:"POST", body:JSON.stringify({title:txt})});
   if(!r.ok) throw new Error("crear falló");
   const j=await r.json();
-  return {gid:j.id, glist:"@default", glistName:"Mis tareas"};
+  return {gid:j.id, glist: listId||"@default", glistName: listName||"Mis tareas"};
+}
+// mover de lista: la API no lo soporta directo → se crea en la nueva y se borra la vieja
+async function gMoveList(t, listId, listName){
+  if(!t.gid || t.glist===listId) return true;
+  try{
+    const r=await gFetch(`https://tasks.googleapis.com/tasks/v1/lists/${encodeURIComponent(listId)}/tasks`,
+      {method:"POST", body:JSON.stringify({title:t.txt, notes:t.ctx||"", due:t.due?t.due+"T00:00:00.000Z":null, status:t.done?"completed":"needsAction"})});
+    if(!r.ok) throw 0;
+    const j=await r.json();
+    const old={glist:t.glist, gid:t.gid};
+    t.gid=j.id; t.glist=listId; t.glistName=listName;
+    gFetch(`https://tasks.googleapis.com/tasks/v1/lists/${encodeURIComponent(old.glist)}/tasks/${encodeURIComponent(old.gid)}`,{method:"DELETE"}).catch(()=>{});
+    return true;
+  }catch{ GSYNC.err="No pude mover la tarea de lista"; return false; }
 }
 function gHide(t){ const h=loadStore("ghidden"); h.ids=h.ids||[]; if(t.gid&&!h.ids.includes(t.gid)) h.ids.push(t.gid); saveStore("ghidden",h); }
 function googleSettings(){
