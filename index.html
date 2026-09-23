@@ -3230,6 +3230,7 @@ function fmtDia(ds){ // "mañana" · "mié 17" · "17 oct"
   return d.getDate()+" "+["ene","feb","mar","abr","may","jun","jul","ago","sep","oct","nov","dic"][d.getMonth()];
 }
 let QDAYF=0; // 0=hoy · 1=mañana · 2=pasado mañana (horizonte máximo: 3 días, foco)
+let QSTATE="all"; // all · pend · done (filtro de estado sobre el día elegido)
 // 📅 mini-calendario propio: aparece pegado a la fila, 3 semanas, un toque y listo
 function datePop(anchorRow, cur, onPick){
   document.querySelectorAll(".date-pop").forEach(x=>x.remove());
@@ -3324,8 +3325,22 @@ function renderQuick(){
   const fechaDe=t=> t.due || t.snooze || null;
   const enDia=(t,n)=>{ const f=fechaDe(t); return n===0 ? (!f||f<=hoy) : (f>dstr(n-1) && f<=dstr(n)); };
   const pendDay=n=>Q.items.filter(t=>!t.done&&!isRoutine(t)&&enDia(t,n)).length;
+  // filtro de estado (encima de los filtros de día)
+  const stRow=el("div","q-filters");
+  stRow.style.cssText="display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin:4px 0 8px";
+  {
+    const enD=t=>!isRoutine(t)&&enDia(t,QDAYF);
+    const nP=Q.items.filter(t=>enD(t)&&!t.done).length, nH=Q.items.filter(t=>enD(t)&&t.done).length;
+    [[tr("Todas","All"),"all",nP+nH],[tr("Pendientes","Pending"),"pend",nP],[tr("Hechas","Done"),"done",nH]].forEach(([lb,v,n])=>{
+      const c=el("span","cat-pill cp-todo", lb+(n?" · "+n:""));
+      c.style.cssText="cursor:pointer;font-size:11px;user-select:none;"+(QSTATE===v?"background:var(--ink);color:var(--paper)":"");
+      c.onclick=()=>{ QSTATE=v; renderQuick(); };
+      stRow.appendChild(c);
+    });
+  }
+  root.appendChild(stRow);
   const dayRow=el("div","q-filters");
-  dayRow.style.cssText="display:flex;gap:7px;flex-wrap:wrap;align-items:center;margin:4px 0 12px";
+  dayRow.style.cssText="display:flex;gap:7px;flex-wrap:wrap;align-items:center;margin:0 0 12px";
   [[tr("Hoy","Today"),0],[tr("Mañana","Tomorrow"),1],[tr("Pasado","Day after"),2]].forEach(([lb,n])=>{
     const cnt=pendDay(n);
     const c=el("button","day-chip"+(QDAYF===n?" sel":""), lb+(cnt?` · ${cnt}`:""));
@@ -3521,7 +3536,8 @@ function renderQuick(){
       mkChip("Todas","");
       cats.forEach(c=>mkChip(c,c));
     }
-    const visible=all.filter(t=>!(QDAYF===0&&t.top) && (!qcat || catOf(t)===qcat));
+    const visible=all.filter(t=>!(QDAYF===0&&t.top) && (!qcat || catOf(t)===qcat)
+      && (QSTATE==="all" || (QSTATE==="pend" ? !t.done : t.done)));
     const rutinas=Q.items.filter(t=>isRoutine(t));
     const rank=t=>t.done?9:({A:0,B:1,C:2,D:3}[t.abcde] ?? 4);
     const sorted=[...visible].sort((a,b)=>{
