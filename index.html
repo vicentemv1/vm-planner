@@ -2868,6 +2868,35 @@ document.addEventListener("visibilitychange",()=>{ if(!document.hidden){ drivePu
 // refresco automático de tareas cada 45s mientras la pestaña está visible
 setInterval(()=>{ if(!document.hidden && gClientId() && gConnected()) syncGoogleTasks(false); }, 45000);
 
+/* 🛡️ bloquear un importante en Google Calendar: reunión contigo mismo en tu primer hueco libre */
+async function calBlockTop(t, save){
+  await syncCalendar(false);
+  let start;
+  if(t.hora){ const [h,m]=t.hora.split(":").map(Number); const d=new Date(); d.setHours(h,m||0,0,0); start=d.getTime(); }
+  else{
+    const w = t.top==="PM" ? topWindow(0,13,19) : topWindow(0,0,13) || topWindow(0,13,19);
+    if(!w){ toastMini(tr("Sin huecos libres hoy — ponle hora en el detalle y reintenta","No free slots today — set a time and retry")); return false; }
+    start=Math.max(w[0], Date.now());
+  }
+  if(start<Date.now()) start=Date.now()+2*60000; // nunca en el pasado
+  start=Math.ceil(start/300000)*300000;           // redondear a 5 min
+  const end=start+45*60000;
+  const body={ summary:"✦ "+t.txt,
+    description: tr("Bloque de foco — creado desde VM Planner","Focus block — created from VM Planner")+(t.ctx?"\n\n"+t.ctx:""),
+    start:{dateTime:new Date(start).toISOString()}, end:{dateTime:new Date(end).toISOString()} };
+  const post=()=>gFetch("https://www.googleapis.com/calendar/v3/calendars/primary/events",{method:"POST", body:JSON.stringify(body)});
+  let r=await post();
+  if(r.status===403){ try{ await gRequest("consent"); }catch{} r=await post(); } // falta el permiso nuevo: pedirlo y reintentar
+  if(r.ok){
+    t.hora=hmt(start); if(save) save();
+    if(CAL.busy){ CAL.busy.push([start,end]); CAL.busy.sort((x,y)=>x[0]-y[0]); }
+    toastMini("🛡️ "+tr("Agenda bloqueada","Calendar blocked")+" "+hmt(start)+"–"+hmt(end));
+    return true;
+  }
+  toastMini("⚠️ "+tr("No pude crear el bloque en Calendar","Couldn't create the Calendar block"));
+  return false;
+}
+
 /* 🔗 detalle de tarea: TODO en un lugar — título, descripción (sincronizada con Google),
    prioridad, fecha, hora y categoría. Los links de la descripción quedan clickeables. */
 function openTaskDetail(t, save, after){
@@ -3335,7 +3364,10 @@ function renderQuick(){
   if(tops.length && QDAYF===0){
     const tc=el("div","top-card");
     const listas=tops.every(t=>t.done);
-    tc.innerHTML=`<div class="top-label">${tr("LO IMPORTANTE DE HOY","TODAY'S IMPORTANT")}${listas?` · <span style="color:var(--accent)">${tr("COMPLETADO","DONE")} ✓</span>`:""}</div>`+
+    const swappable=tops.filter(t=>!t.done).length>=1 && tops.length>=2;
+    tc.innerHTML=`<div class="top-label" style="display:flex;align-items:center;gap:8px">
+      ${swappable?`<span class="t-act tip" id="topSwap" data-tip="${tr("Intercambiar AM ↔ PM","Swap AM ↔ PM")}" style="opacity:.75;font-size:13px">⇅</span>`:""}
+      <span>${tr("LO IMPORTANTE DE HOY","TODAY'S IMPORTANT")}${listas?` · <span style="color:var(--accent)">${tr("COMPLETADO","DONE")} ✓</span>`:""}</span></div>`+
       tops.map((t,i)=>`<div class="top-row${t.done?" top-ok":""}" data-i="${i}">
         <span class="top-ic">${t.top==="AM"?"☀️":"🌇"}</span>
         <div class="top-main">
@@ -3344,18 +3376,28 @@ function renderQuick(){
         </div>
         ${t.done?`<span class="top-hora" style="background:transparent">✓</span>`:`
         ${t.hora?`<span class="top-hora">${esc(t.hora)}</span>`:""}
-        <button class="lib-act top-go" data-m="25" title="${tr("25 min de foco","25 min focus")}">▶ 25’</button>
-        <button class="lib-act top-go" data-m="45" title="${tr("45 min de foco","45 min focus")}">▶ 45’</button>
+        <button class="lib-act top-go tip" data-m="25" data-tip="${tr("25 min de foco","25 min focus")}">▶ 25’</button>
+        <button class="lib-act top-go tip" data-m="45" data-tip="${tr("45 min de foco","45 min focus")}">▶ 45’</button>
+        <button class="lib-act top-cal tip" data-tip="${tr("Bloquear en Google Calendar (reunión contigo mismo)","Block it in Google Calendar")}">🗓️</button>
         <button class="lib-act top-done">✓ ${tr("Hecha","Done")}</button>`}
       </div>`).join("");
     tc.querySelectorAll(".top-row").forEach(row=>{
       const t=tops[+row.dataset.i];
       row.querySelectorAll(".top-go").forEach(go=>go.onclick=()=>startFocus((t.top==="AM"?"☀️ ":"🌇 ")+t.txt, +go.dataset.m));
+      const cb=row.querySelector(".top-cal");
+      if(cb) cb.onclick=async()=>{ cb.disabled=true; cb.textContent="⏳"; await calBlockTop(t, save); cb.disabled=false; cb.textContent="🗓️"; renderQuick(); };
       const dn=row.querySelector(".top-done"); if(dn) dn.onclick=()=>{ t.done=true; t.doneAt=hoy;
         const st=loadStore("stats"); st.frogs=(st.frogs||0)+1; st.done=(st.done||0)+1; saveStore("stats",st); recordReview();
         todayBump(t.top==="AM"?"am":"pm",1); archiveAdd(t);
         save(); gSetStatus(t,true); confetti(); renderQuick(); };
     });
+    const sw=tc.querySelector("#topSwap");
+    if(sw) sw.onclick=()=>{
+      const am=tops.find(t=>t.top==="AM"), pm=tops.find(t=>t.top==="PM");
+      if(am&&pm){ am.top="PM"; pm.top="AM"; const h=am.hora; am.hora=pm.hora; pm.hora=h; }
+      else if(tops[0]) tops[0].top = tops[0].top==="AM" ? "PM" : "AM";
+      save(); renderQuick();
+    };
     root.appendChild(tc);
   }
   const add=el("div","q-add");
@@ -3599,7 +3641,7 @@ function gRequest(promptMode){
   return new Promise((res,rej)=>{
     if(!window.google||!google.accounts){ rej(new Error("No cargó Google Identity (¿sin internet?)")); return; }
     if(!gTokenClient) gTokenClient=google.accounts.oauth2.initTokenClient({
-      client_id:gClientId(), scope:"https://www.googleapis.com/auth/tasks https://www.googleapis.com/auth/calendar.readonly https://www.googleapis.com/auth/drive.appdata", callback:()=>{} });
+      client_id:gClientId(), scope:"https://www.googleapis.com/auth/tasks https://www.googleapis.com/auth/calendar.readonly https://www.googleapis.com/auth/calendar.events https://www.googleapis.com/auth/drive.appdata", callback:()=>{} });
     gTokenClient.callback=(resp)=>{
       if(resp.error){ rej(new Error(resp.error)); return; }
       saveStore("gtoken",{token:resp.access_token, exp:Date.now()+((resp.expires_in||3600)-60)*1000});
