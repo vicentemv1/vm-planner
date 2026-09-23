@@ -3555,7 +3555,7 @@ function renderQuick(){
       <span style="display:flex;gap:8px">
       ${pend&&QDAYF===0?`<button class="lib-act" id="qAllMoon">🌙 ${tr("Todas a mañana","All to tomorrow")}</button>`:""}
       ${done?`<button class="lib-act" id="qClear">🧹 ${tr("Limpiar hechas","Clear done")}</button>`:""}
-      <button class="lib-act" id="qArch" title="${tr("Historial de tareas hechas","Completed tasks history")}">🗂</button></span>`;
+      <button class="lib-act tip" id="qArch" data-tip="${tr("Todo lo que has completado, por fecha","Everything you've completed, by date")}">🗂 ${tr("Historial","History")}</button></span>`;
     const qa=$("#qArch"); if(qa) qa.onclick=openArchive;
     const qc=$("#qClear"); if(qc) qc.onclick=()=>{ Q.items=Q.items.filter(t=>!t.done); save(); draw(); };
     const qm=$("#qAllMoon"); if(qm) qm.onclick=()=>{ const m=localDate(new Date(Date.now()+86400000));
