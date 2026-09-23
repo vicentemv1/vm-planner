@@ -527,6 +527,11 @@
   .stat-big .l{font-size:12.5px;color:var(--ink-soft);margin-top:5px}
   .stat-big .em{font-size:20px}
   .heat-title{font-size:13px;font-weight:700;color:var(--ink-soft);margin:6px 0 10px;letter-spacing:.3px}
+  .rhythm{display:flex;align-items:flex-end;gap:5px;height:56px;margin-top:14px;padding:0 2px}
+  .rhythm .rb{flex:1;background:var(--accent);opacity:.85;border-radius:4px 4px 0 0;position:relative;min-height:4px}
+  .rhythm .rb[data-n="0"]{background:var(--paper-2);opacity:1}
+  .rhythm .rb:hover::after{content:attr(data-n);position:absolute;bottom:calc(100% + 4px);left:50%;transform:translateX(-50%);
+    font-size:10.5px;font-weight:800;color:var(--ink-soft)}
   .heat{display:grid;grid-auto-flow:column;grid-template-rows:repeat(7,1fr);gap:3px;overflow-x:auto;padding-bottom:4px}
   .heat i{width:13px;height:13px;border-radius:3px;background:var(--paper-2)}
   .heat i.l1{background:#A9D8C9}.heat i.l2{background:#6FC3AC}.heat i.l3{background:#3FA98F}.heat i.l4{background:var(--accent)}
@@ -784,6 +789,12 @@
   .tt:not(.sel):hover{border-color:var(--accent);color:var(--accent)}
   .top-row.top-ok .top-txt{text-decoration:line-through;color:var(--ink-soft);font-weight:600}
   .lnk-ind{font-size:11px;opacity:.7}
+  .tip{position:relative}
+  .tip::after{content:attr(data-tip);position:absolute;bottom:calc(100% + 7px);right:-4px;
+    background:var(--ink);color:var(--paper);padding:5px 10px;border-radius:8px;font-size:11.5px;font-weight:700;
+    white-space:nowrap;opacity:0;pointer-events:none;transform:translateY(2px);transition:opacity .1s,transform .1s;z-index:30}
+  .tip:hover::after{opacity:1;transform:translateY(0)}
+  @media(hover:none){ .tip::after{display:none} }
   .t-desc{display:block;font-size:12px;font-weight:400;color:var(--ink-soft);margin-top:2px;
     white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%}
   .ttxt{cursor:pointer}
@@ -2648,7 +2659,33 @@ function openStats(){
       ${(()=>{ const h=Object.entries(st.hours||{}).sort((a,b)=>b[1]-a[1])[0];
         return h?`<div class="stat-big"><div class="em">⏰</div><div class="n">${h[0]}:00</div><div class="l">tu hora de oro (más foco)</div></div>`:""; })()}
     </div>
-    <div class="heat-title">Días productivos — últimos 90 (planificar, foco o completar cuenta)</div>
+    ${(()=>{ // 📈 tracking real desde el historial de tareas hechas
+      const A=(loadStore("archive").items)||[];
+      if(!A.length) return "";
+      const byDay={}; A.forEach(x=>{ byDay[x.d]=(byDay[x.d]||0)+1; });
+      const hoyS=todayStr();
+      const dback=n=>localDate(new Date(Date.now()-n*86400000));
+      const sum=n=>{ let t=0; for(let i=0;i<n;i++) t+=byDay[dback(i)]||0; return t; };
+      const prom=n=>(sum(n)/n).toFixed(1);
+      let racha=0; for(let i=0;;i++){ const ds=dback(i); if(byDay[ds]) racha++; else { if(i===0) continue; break; } if(i>400) break; }
+      const mejor=Object.entries(byDay).sort((a,b)=>b[1]-a[1])[0];
+      const estaSem=sum(7), antSem=(()=>{ let t=0; for(let i=7;i<14;i++) t+=byDay[dback(i)]||0; return t; })();
+      const delta=antSem? Math.round((estaSem-antSem)/antSem*100) : null;
+      const barras=[...Array(14)].map((_,i)=>{ const n=byDay[dback(13-i)]||0; return {n, h:Math.min(100, n*14)}; });
+      return `
+      <div class="heat-title" style="margin-top:22px">📈 ${tr("Tu ritmo de tareas hechas","Your completion rhythm")}</div>
+      <div class="stats-top">
+        <div class="stat-big"><div class="n">${byDay[hoyS]||0}</div><div class="l">${tr("hechas hoy","done today")}</div></div>
+        <div class="stat-big"><div class="n">${prom(7)}</div><div class="l">${tr("promedio diario · 7 días","daily avg · 7 days")}</div></div>
+        <div class="stat-big"><div class="n">${prom(30)}</div><div class="l">${tr("promedio diario · 30 días","daily avg · 30 days")}</div></div>
+        <div class="stat-big"><div class="n">${racha}</div><div class="l">${tr("días seguidos completando","day completion streak")}</div></div>
+        ${mejor?`<div class="stat-big"><div class="n">${mejor[1]}</div><div class="l">${tr("tu mejor día","best day")} · ${fmtDia(mejor[0])==="mañana"?mejor[0]:fmtDia(mejor[0])}</div></div>`:""}
+        <div class="stat-big"><div class="n">${estaSem}${delta!==null?` <span style="font-size:13px;color:${delta>=0?"var(--accent)":"var(--down)"}">${delta>=0?"▲":"▼"}${Math.abs(delta)}%</span>`:""}</div><div class="l">${tr("esta semana vs anterior","this week vs last")}</div></div>
+      </div>
+      <div class="rhythm">${barras.map(b=>`<div class="rb" style="height:${Math.max(4,b.h)}%" data-n="${b.n}"></div>`).join("")}</div>
+      <div class="q-sub" style="font-size:11px;text-align:center;margin-top:4px">${tr("últimos 14 días","last 14 days")}</div>`;
+    })()}
+    <div class="heat-title" style="margin-top:22px">Días productivos — últimos 90 (planificar, foco o completar cuenta)</div>
     <div class="heat">${cells}</div>
     <p style="font-size:12px;color:var(--ink-soft);margin:14px 0 0">💾 Respaldo automático: ${localStorage.getItem("nitido-lastbackup")===todayStr()?"hoy ✓ (carpeta backups/ junto a la app)":"se hace solo al abrir la app servida en localhost"}</p>
     <div class="backup-row">
@@ -2827,7 +2864,9 @@ async function drivePull(){
 }
 // ciclo: al partir, cada 60s y al volver a la pestaña
 setInterval(()=>{ drivePull().catch(()=>{}); }, 60000);
-document.addEventListener("visibilitychange",()=>{ if(!document.hidden) drivePull().catch(()=>{}); });
+document.addEventListener("visibilitychange",()=>{ if(!document.hidden){ drivePull().catch(()=>{}); if(gClientId()&&gConnected()) syncGoogleTasks(false); } });
+// refresco automático de tareas cada 45s mientras la pestaña está visible
+setInterval(()=>{ if(!document.hidden && gClientId() && gConnected()) syncGoogleTasks(false); }, 45000);
 
 /* 🔗 detalle de tarea: TODO en un lugar — título, descripción (sincronizada con Google),
    prioridad, fecha, hora y categoría. Los links de la descripción quedan clickeables. */
@@ -3359,15 +3398,15 @@ function renderQuick(){
         const prev=(t.ctx||"").split("\n").map(l=>l.trim()).filter(l=>l&&!/^https?:\/\/\S+$/.test(l))[0]||"";
         return prev&&!t.done ? `<span class="t-desc">${esc(trim(prev,90))}</span>` : "";
       })()}</span>
-      ${t.hora&&!t.done?`<span class="hora-chip" title="Cambiar hora">🕘 ${esc(t.hora)}</span>`:(!t.done?`<span class="hora-chip empty" title="Asignar hora">🕘 hora</span>`:"")}
+      ${t.hora&&!t.done?`<span class="hora-chip tip" data-tip="${tr("Cambiar hora","Change time")}">🕘 ${esc(t.hora)}</span>`:(!t.done?`<span class="hora-chip empty tip" data-tip="${tr("Asignar hora","Set time")}">🕘 hora</span>`:"")}
       ${ageChip}
       ${snoozed&&fechaDe(t)?`<span class="due-chip t-cal" title="Cambiar fecha" style="cursor:pointer">📅 ${fmtDia(fechaDe(t))}</span>`:""}
-      ${!t.done&&!snoozed?`<span class="t-act t-top" title="Importante del día (☀️ AM → 🌇 PM → quitar)">${t.top?"★":"☆"}</span>`:""}
-      ${!t.done&&!snoozed?`<span class="t-act t-rut" title="Marcar como rutina diaria (sale del juego ABCDE)">⟳</span>`:""}
-      ${!t.done&&!snoozed?`<span class="t-act t-moon" title="Dejar para mañana">🌙</span>`:""}
-      ${!t.done&&!snoozed?`<span class="t-act t-cal" title="Mover a otra fecha">📅</span>`:""}
-      ${snoozed?`<span class="t-act" style="opacity:.85" title="Traer de vuelta a hoy">☀️</span>`:""}
-      <span class="t-act t-del" title="Eliminar">✕</span>`;
+      ${!t.done&&!snoozed?`<span class="t-act tip t-top" data-tip="${tr("Importante del día","Mark as key task")}">${t.top?"★":"☆"}</span>`:""}
+      ${!t.done&&!snoozed?`<span class="t-act tip t-rut" data-tip="${tr("Convertir en rutina diaria","Make daily routine")}">⟳</span>`:""}
+      ${!t.done&&!snoozed?`<span class="t-act tip t-moon" data-tip="${tr("Dejar para mañana","Push to tomorrow")}">🌙</span>`:""}
+      ${!t.done&&!snoozed?`<span class="t-act tip t-cal" data-tip="${tr("Mover a otra fecha","Move to a date")}">📅</span>`:""}
+      ${snoozed?`<span class="t-act tip" style="opacity:.85" title="Traer de vuelta a hoy" data-tip="${tr("Traer de vuelta a hoy","Bring back to today")}">☀️</span>`:""}
+      <span class="t-act tip t-del" data-tip="${tr("Eliminar","Delete")}">✕</span>`;
     const moveTo=v=>{ // mover fecha aquí Y en Google Tasks
       t.snooze = v>hoy ? v : null; t.due=v; save(); gSetDue(t,v); renderQuick();
     };
@@ -3589,7 +3628,7 @@ async function gFetch(url,opts={}){
 // Trae tus Google Tasks y los funde con "Mi Día" (dos vías: completar acá = completar allá)
 async function syncGoogleTasks(force){
   if(!gClientId()) return false;
-  if(!force && GSYNC.last && Date.now()-GSYNC.last<60000) return true;
+  if(!force && GSYNC.last && Date.now()-GSYNC.last<15000) return true;
   if(GSYNC.busy) return true;
   GSYNC.busy=true;
   try{
@@ -3621,11 +3660,14 @@ async function syncGoogleTasks(force){
       }while(pageTok && pages<5);
       return ok;
     };
-    for(const l of lists){
-      const okPend=await pull(l, "showCompleted=false");                                     // TODAS las pendientes
-      await pull(l, "showCompleted=true&showHidden=true&completedMin="+encodeURIComponent(compMin)); // completadas recientes (para el 2 vías)
+    // todas las listas EN PARALELO (antes era secuencial: 2 requests × lista encadenados)
+    await Promise.all(lists.map(async l=>{
+      const [okPend]=await Promise.all([
+        pull(l, "showCompleted=false"),                                                      // TODAS las pendientes
+        pull(l, "showCompleted=true&showHidden=true&completedMin="+encodeURIComponent(compMin)) // completadas recientes
+      ]);
       if(okPend) okLists.add(l.id);
-    }
+    }));
     const Q=loadStore("quick"); Q.items=Q.items||[];
     const hidden=new Set((loadStore("ghidden").ids)||[]);
     const hoy=todayStr();
