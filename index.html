@@ -820,6 +820,11 @@
   .lang-tg{margin-left:auto;border:1px solid var(--line);background:var(--card);border-radius:999px;padding:5px 13px;
     font-size:11.5px;font-weight:800;letter-spacing:.6px;cursor:pointer;color:var(--ink-soft);flex:0 0 auto}
   .lang-tg:hover{border-color:var(--accent);color:var(--accent)}
+  .veil{filter:blur(2.5px) grayscale(.4);opacity:.45;pointer-events:none;user-select:none;transition:.25s}
+  .lock-bar{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;
+    background:var(--card);border:1px solid var(--line);border-left:3px solid var(--accent);
+    border-radius:12px;padding:10px 14px;margin:0 0 12px;font-size:13px}
+  .lock-bar .lock-side{display:flex;gap:10px;align-items:center;flex:0 0 auto}
   .q-add{display:flex;gap:8px;align-items:stretch}
   .q-add input{flex:1;min-width:0}
   .mic-btn{flex:0 0 46px;border:1px solid var(--line);background:var(--card);border-radius:12px;font-size:17px;cursor:pointer}
@@ -3416,6 +3421,37 @@ function renderQuick(){
     };
     root.appendChild(tc);
   }
+  // 🔒 MODO COMPROMISO: si el importante del bloque está pendiente, el resto se vela.
+  // AM manda hasta las 13:00 · PM hasta las 18:00 (y si la AM sigue viva en la tarde, también exige).
+  // Siempre libres: capturar tareas, rutinas, la tarjeta de importantes y cambiar de día.
+  let veilDemand=null, veilFreed=false;
+  if(QDAYF===0){
+    const hr=new Date().getHours();
+    const amT=tops.find(t=>t.top==="AM"&&!t.done), pmT=tops.find(t=>t.top==="PM"&&!t.done);
+    if(hr<13) veilDemand=amT||null;
+    else if(hr<18) veilDemand=pmT||amT||null;
+    let FREE={}; try{ FREE=JSON.parse(localStorage.getItem("nitido-free")||"{}"); }catch{}
+    if(FREE.d!==hoy){ FREE={d:hoy, count:0, until:0}; }
+    veilFreed = FREE.until && Date.now()<FREE.until;
+    if(veilDemand){
+      const lock=el("div","lock-bar");
+      if(!veilFreed){
+        lock.innerHTML=`<span>🔒 ${tr("Hasta las","Until")} ${new Date().getHours()<13?"13:00":"18:00"} ${tr("tu foco es","your focus is")} <b>${veilDemand.top==="AM"?"☀️":"🌇"} ${esc(trim(veilDemand.txt,48))}</b></span>
+          <span class="lock-side">${FREE.count?`<span class="q-sub" style="font-size:11px">${tr("liberaciones hoy","unlocks today")}: ${FREE.count}</span>`:""}
+          <button class="lib-act" id="freeBtn" style="font-size:11.5px;padding:4px 10px">🔓 ${tr("liberar 15 min","unlock 15 min")}</button></span>`;
+      } else {
+        lock.innerHTML=`<span>🔓 ${tr("Lista liberada hasta las","List unlocked until")} <b>${hmt(FREE.until)}</b> · ${tr("liberaciones hoy","unlocks today")}: ${FREE.count}</span>`;
+        setTimeout(()=>{ if(VIEW==="quick") renderQuick(); }, Math.max(1000, FREE.until-Date.now()+500));
+      }
+      root.appendChild(lock);
+      const fb=lock.querySelector("#freeBtn");
+      if(fb) fb.onclick=()=>{
+        FREE.until=Date.now()+15*60000; FREE.count=(FREE.count||0)+1;
+        try{ localStorage.setItem("nitido-free", JSON.stringify(FREE)); }catch{}
+        renderQuick();
+      };
+    }
+  }
   const add=el("div","q-add");
   add.innerHTML=`<input type="text" id="qNew" placeholder="${tr("Escribe y Enter…   ! = A · !b · !c · !d","Type and Enter…   ! = A · !b · !c · !d")}">
     <span class="ab" id="qPrio" style="display:none;position:absolute;right:64px;top:50%;transform:translateY(-50%)"></span>
@@ -3578,6 +3614,10 @@ function renderQuick(){
     }
   };
   draw();
+  // aplicar el velo del Modo Compromiso (la tarjeta, la captura y las rutinas quedan libres)
+  if(veilDemand && !veilFreed){
+    [stRow, filtRow, list, foot, snoozeBox].forEach(x=>{ if(x) x.classList.add("veil"); });
+  }
   const inp=$("#qNew");
   // prioridad desde la caja: "!" = A · "!b" "!c" "!d" = el resto (la letra necesita espacio después: "!apagar" sigue siendo A)
   const parsePrio=v=>{
