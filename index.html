@@ -2288,7 +2288,7 @@ function parseQA(text){
 function loadStore(k){ try{ return JSON.parse(localStorage.getItem("nitido-"+k)||"{}"); }catch{ return {}; } }
 function saveStore(k,v){
   try{ localStorage.setItem("nitido-"+k, JSON.stringify(v)); }catch{}
-  if(typeof SYNC_KEYS!=="undefined" && SYNC_KEYS.includes(k) && typeof syncMark==="function") syncMark();
+  if(typeof SYNC_KEYS!=="undefined" && SYNC_KEYS.includes(k) && typeof syncMark==="function"){ syncMark(); if(typeof statePushLocal==="function") statePushLocal(); }
 }
 function hash(s){ let h=0; for(let i=0;i<s.length;i++){ h=(h<<5)-h+s.charCodeAt(i); h|=0; } return "k"+Math.abs(h); }
 // Divide el texto en secciones {title, items[]} detectando líneas-título
@@ -2873,6 +2873,60 @@ async function drivePull(){
   } finally{ SY.busy=false; SY.ready=true; }
   if(pushAfter) await drivePush().catch(()=>{});
 }
+/* 🔌 puente MCP (solo en el Mac): la app publica su estado y aplica órdenes de Claude */
+const esLocalHost=()=>["localhost","127.0.0.1"].includes(location.hostname);
+let _stp=null;
+function statePushLocal(){
+  if(!esLocalHost()) return;
+  clearTimeout(_stp);
+  _stp=setTimeout(()=>{ try{
+    fetch("/state",{method:"POST",headers:{"Content-Type":"application/json"},
+      body:JSON.stringify({at:Date.now(), data:packState()})}).catch(()=>{});
+  }catch{} },1500);
+}
+async function pollOps(){
+  if(!esLocalHost()) return;
+  try{
+    const r=await fetch("/ops"); if(!r.ok) return;
+    const ops=await r.json(); if(!Array.isArray(ops)||!ops.length) return;
+    const Q=loadStore("quick"); Q.items=Q.items||[];
+    const hoy=todayStr(); const done=[];
+    for(const op of ops){
+      try{
+        if(op.tipo==="crear_tarea" && op.texto){
+          const nt={txt:String(op.texto).slice(0,200), done:false, abcde:/^[ABCD]$/.test(op.prioridad||"")?op.prioridad:null,
+            created:hoy, snooze:null, ctx:String(op.descripcion||"").slice(0,2000)};
+          if(op.fecha && /^\d{4}-\d{2}-\d{2}$/.test(op.fecha) && op.fecha>hoy){ nt.snooze=op.fecha; nt.due=op.fecha; }
+          Q.items.unshift(nt);
+          if(gClientId()&&gConnected()) gCreateTask(nt.txt).then(g=>{ Object.assign(nt,g);
+            if(nt.due) gSetDue(nt,nt.due); if(nt.ctx) gPush(nt,{notes:nt.ctx}); saveStore("quick",Q); }).catch(()=>{});
+        } else if(op.tipo==="completar_tarea" && op.texto){
+          const q=String(op.texto).toLowerCase();
+          const t=Q.items.find(x=>!x.done && x.txt.toLowerCase().includes(q));
+          if(t){ t.done=true; t.doneAt=hoy;
+            const st=loadStore("stats"); st.done=(st.done||0)+1;
+            if(t.top){ st.frogs=(st.frogs||0)+1; todayBump(t.top==="AM"?"am":"pm",1); } else todayBump("done",1);
+            saveStore("stats",st); recordReview(); archiveAdd(t); gSetStatus(t,true); }
+        } else if(op.tipo==="crear_nota"){
+          const N=notesStore();
+          N.list.push({id:"n"+Date.now()+Math.random().toString(36).slice(2,5), tit:String(op.titulo||"").slice(0,120),
+            fold:String(op.carpeta||"").slice(0,60), d:hoy, html:esc(String(op.contenido||"").slice(0,20000)).replace(/\n/g,"<br>"), up:Date.now()});
+          saveStore("notes",N);
+        }
+        done.push(op.id);
+      }catch{ done.push(op.id); }
+    }
+    saveStore("quick",Q);
+    if(done.length){
+      await fetch("/ops/ack",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({ids:done})}).catch(()=>{});
+      refreshBadges(); if(VIEW==="quick") renderQuick(); else if(VIEW==="journal") renderJournal();
+      toastMini("🤖 "+done.length+" "+tr("orden(es) de Claude aplicadas","Claude op(s) applied"));
+    }
+  }catch{}
+}
+setInterval(pollOps, 20000);
+setTimeout(()=>{ pollOps(); statePushLocal(); }, 1200);
+
 // ciclo: al partir, cada 60s y al volver a la pestaña
 setInterval(()=>{ drivePull().catch(()=>{}); }, 60000);
 document.addEventListener("visibilitychange",()=>{ if(!document.hidden){ drivePull().catch(()=>{}); if(gClientId()&&gConnected()) syncGoogleTasks(false); } });
