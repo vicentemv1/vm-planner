@@ -932,6 +932,8 @@
   .t-row .t-act{flex:0 0 auto;width:24px;height:24px;border-radius:7px;display:grid;place-items:center;
     font-size:13px;cursor:pointer;opacity:0;transition:.15s;color:var(--ink-soft)}
   .t-row:hover .t-act{opacity:.85}
+  .t-row .t-act.t-work{opacity:.55}
+  .t-row .t-act.t-work:hover{opacity:1;background:var(--accent-soft)}
   .t-row .t-act:hover{background:var(--paper-2);opacity:1}
   .t-row .t-imp{opacity:.25}
   .t-row.imp{border-left:3px solid var(--warm)}
@@ -1007,6 +1009,8 @@
   .focus-time.over{color:var(--warm)}
   .focus-btns{display:flex;gap:10px;justify-content:center;margin-top:22px}
   .focus-btns .lib-act{padding:10px 20px;font-size:14px}
+  .focus-links{display:flex;gap:6px;flex-wrap:wrap;justify-content:center;margin:10px 0 0}
+  .focus-links:empty{display:none}
 
   /* buscador global */
   .search-ov{position:fixed;inset:0;background:rgba(36,31,24,.4);backdrop-filter:blur(4px);
@@ -1169,6 +1173,7 @@
   <div class="focus-card">
     <div class="focus-label">ENFOCADO EN</div>
     <div class="focus-task" id="focusTask"></div>
+    <div class="focus-links" id="focusLinks"></div>
     <div class="focus-time" id="focusTime">25:00</div>
     <div class="focus-btns">
       <button class="lib-act" id="focusPause">⏸ Pausa</button>
@@ -2903,6 +2908,34 @@ async function calBlockTop(t, save){
   return false;
 }
 
+/* ▶ Modo trabajo: apretar una tarea y ponerse a HACERLA — contexto + timer + hecha, todo junto */
+function openWork(t, save, after){
+  const links=(String(t.ctx||"").match(/https?:\/\/[^\s<>"')\]]+/g))||[];
+  const descTxt=String(t.ctx||"").split("\n").filter(l=>l.trim()&&!/^https?:\/\/\S+$/.test(l.trim())).join("\n");
+  const ic=t.top==="AM"?"☀️ ":t.top==="PM"?"🌇 ":"";
+  showPanel(tr("A trabajar","Let's work"), `
+    <h3 style="margin:0 0 4px;font-size:21px;letter-spacing:-0.02em">${ic}${esc(t.txt)}</h3>
+    ${t.bite?`<p class="q-sub" style="margin:2px 0 0;font-size:13px">▶ ${tr("Parte por","Start with")}: <b>${esc(t.bite)}</b></p>`:""}
+    ${descTxt?`<p style="margin:12px 0 0;font-size:13.5px;color:var(--ink-soft);white-space:pre-wrap;line-height:1.6">${esc(trim(descTxt,400))}</p>`:""}
+    ${links.length?`<div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:12px">${links.map(u=>
+      `<a class="lib-act" href="${esc(u)}" target="_blank" rel="noopener" style="text-decoration:none">🔗 ${esc(u.replace(/^https?:\/\/(www\.)?/,"").slice(0,34))}${u.length>42?"…":""}</a>`).join("")}</div>`:""}
+    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:20px">
+      ${[15,25,45].map(m=>`<button class="lib-act wk-go" data-m="${m}" style="flex:1;padding:12px 0;font-size:14px">▶ ${m} min</button>`).join("")}
+    </div>
+    <div class="rit-foot"><button class="lib-act" id="wkDetail">✏️ ${tr("Editar detalle","Edit details")}</button>
+      <button class="lib-act" id="wkDone" style="background:var(--accent);color:#fff;border-color:var(--accent)">✓ ${tr("Ya la hice","Done")}</button></div>`);
+  $("#panelBody").querySelectorAll(".wk-go").forEach(b=>b.onclick=()=>startFocus(ic+t.txt, +b.dataset.m, links));
+  $("#wkDetail").onclick=()=>openTaskDetail(t, save, after);
+  $("#wkDone").onclick=()=>{
+    t.done=true; t.doneAt=todayStr();
+    const st=loadStore("stats");
+    if(t.top){ st.frogs=(st.frogs||0)+1; todayBump(t.top==="AM"?"am":"pm",1); }
+    st.done=(st.done||0)+1; saveStore("stats",st); recordReview(); archiveAdd(t);
+    if(!t.top) todayBump("done",1);
+    save(); gSetStatus(t,true); confetti(); closePanel(); after();
+  };
+}
+
 /* 🔗 detalle de tarea: TODO en un lugar — título, descripción (sincronizada con Google),
    prioridad, fecha, hora y categoría. Los links de la descripción quedan clickeables. */
 function openTaskDetail(t, save, after){
@@ -3495,6 +3528,7 @@ function renderQuick(){
       ${t.hora&&!t.done?`<span class="hora-chip tip" data-tip="${tr("Cambiar hora","Change time")}">🕘 ${esc(t.hora)}</span>`:(!t.done?`<span class="hora-chip empty tip" data-tip="${tr("Asignar hora","Set time")}">🕘 hora</span>`:"")}
       ${ageChip}
       ${snoozed&&fechaDe(t)?`<span class="due-chip t-cal" title="Cambiar fecha" style="cursor:pointer">📅 ${fmtDia(fechaDe(t))}</span>`:""}
+      ${!t.done?`<span class="t-act tip t-work" data-tip="${tr("Trabajarla ahora","Work on it now")}" style="opacity:.8;color:var(--accent)">▶</span>`:""}
       ${!t.done&&!snoozed?`<span class="t-act tip t-top" data-tip="${tr("Importante del día","Mark as key task")}">${t.top?"★":"☆"}</span>`:""}
       ${!t.done&&!snoozed?`<span class="t-act tip t-rut" data-tip="${tr("Convertir en rutina diaria","Make daily routine")}">⟳</span>`:""}
       ${!t.done&&!snoozed?`<span class="t-act tip t-moon" data-tip="${tr("Dejar para mañana","Push to tomorrow")}">🌙</span>`:""}
@@ -3551,6 +3585,8 @@ function renderQuick(){
     const sun=row.querySelector("[title=\'Traer de vuelta a hoy\']");
     if(sun) sun.onclick=()=>moveTo(hoy);
     row.querySelector(".ttxt").onclick=()=>openTaskDetail(t, save, renderQuick);
+    const wk=row.querySelector(".t-work");
+    if(wk) wk.onclick=()=>openWork(t, save, renderQuick);
     return row;
   };
   const draw=()=>{
@@ -4799,8 +4835,11 @@ function openFocusSetup(){
     startFocus($("#fTask").value.trim()||"Trabajo profundo", +b.dataset.m);
   });
 }
-function startFocus(task, mins){
+function startFocus(task, mins, links){
   closePanel();
+  const fl=$("#focusLinks");
+  if(fl) fl.innerHTML=(links&&links.length)? links.slice(0,4).map(u=>
+    `<a class="lib-act" href="${esc(u)}" target="_blank" rel="noopener" style="text-decoration:none;font-size:12px">🔗 ${esc(u.replace(/^https?:\/\/(www\.)?/,"").slice(0,30))}</a>`).join("") : "";
   // el tiempo se calcula contra el reloj real (endAt), no contando ticks:
   // así el timer sigue corriendo aunque la pestaña esté en segundo plano
   FOCUS={task, mins, endAt:Date.now()+mins*60000, paused:false, pausedAt:null, iv:null};
